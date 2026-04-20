@@ -64,12 +64,10 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
             color: 'var(--text)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{i.label}</span>
-              {i.title}
-            </span>
-            <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{ago(i.timestamp)}</span>
+          <div>
+            <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{i.label}</span>
+            <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
+            {i.title}
           </div>
           {i.snippet && (
             <div
