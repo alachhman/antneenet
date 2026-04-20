@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Responsive } from 'react-grid-layout/legacy';
 import type { LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
 import { TopBar } from './TopBar';
 import { WidgetCard } from './WidgetCard';
@@ -15,9 +15,31 @@ import { getDefinition, registry } from '../lib/widget-registry';
 import { useEditMode } from './store';
 import type { Breakpoint, LayoutsByBreakpoint, WidgetType } from '../lib/database-types';
 
-const ResponsiveGrid = WidthProvider(Responsive);
 const COLS = { lg: 12, md: 10, sm: 6, xs: 2 } as const;
 const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 0 } as const;
+
+// Measures an element's width via ResizeObserver. More reliable than
+// react-grid-layout's legacy WidthProvider, which only listens to window
+// resize events — so it misses size changes from auth redirects, parent
+// layout settling, etc.
+function useContainerWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Initial measurement in case the observer fires later.
+    setWidth(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
 
 export function Dashboard() {
   const { data: instances = [] } = useWidgetInstances();
@@ -26,6 +48,7 @@ export function Dashboard() {
   const editMode = useEditMode((s) => s.editMode);
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [gridRef, gridWidth] = useContainerWidth<HTMLDivElement>();
 
   const defaultSizes = useMemo(() => {
     return Object.fromEntries(
@@ -40,17 +63,6 @@ export function Dashboard() {
     if (hasContent) return storedLayouts as LayoutsByBreakpoint;
     return defaultLayoutsFor(instances, defaultSizes);
   }, [storedLayouts, instances, defaultSizes]);
-
-  // WidthProvider snapshots container width on mount. Under React 19 strict
-  // mode double-invocation (and sometimes after auth redirects) it can latch
-  // onto a pre-layout width (~150px) and leave the grid squished until the
-  // window is actually resized. Firing a single resize on mount + whenever
-  // instances arrive forces a re-measure against the real container.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const raf = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
-    return () => cancelAnimationFrame(raf);
-  }, [instances.length]);
 
   function handleLayoutChange(_cur: readonly LayoutItem[], all: ResponsiveLayouts) {
     if (!editMode) return;
@@ -82,8 +94,11 @@ export function Dashboard() {
           </button>
         </div>
       )}
-      <ResponsiveGrid
+      <div ref={gridRef}>
+      {gridWidth > 0 && (
+      <Responsive
         className="dashboard-grid"
+        width={gridWidth}
         layouts={layouts as any}
         breakpoints={BREAKPOINTS}
         cols={COLS}
@@ -94,7 +109,6 @@ export function Dashboard() {
         isResizable={editMode}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
-        measureBeforeMount
       >
         {instances.map((inst) => {
           const def = getDefinition(inst.widget_type);
@@ -109,7 +123,9 @@ export function Dashboard() {
             </div>
           );
         })}
-      </ResponsiveGrid>
+      </Responsive>
+      )}
+      </div>
       {settingsFor && (
         <SettingsDrawer
           instanceId={settingsFor}
