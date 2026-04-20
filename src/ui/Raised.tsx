@@ -14,7 +14,7 @@ export function Raised({
         background: 'var(--bg)',
         borderRadius: 'var(--radius-card)',
         boxShadow: 'var(--raised)',
-        padding: 'var(--space-3)',
+        padding: 'var(--space-4)',
         ...style,
       }}
     >

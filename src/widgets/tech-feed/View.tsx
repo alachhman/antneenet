@@ -124,8 +124,8 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: 4,
-            marginBottom: 8,
+            gap: 6,
+            marginBottom: 14,
           }}
         >
           {categories.map((c, idx) => {
@@ -138,9 +138,9 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
                 onClick={() => setActiveIdx(idx)}
                 style={{
                   boxShadow: isActive ? 'var(--inset)' : 'var(--raised-sm)',
-                  padding: '3px 10px',
-                  borderRadius: 6,
-                  fontSize: 10,
+                  padding: '5px 14px',
+                  borderRadius: 8,
+                  fontSize: 11,
                   color: isActive ? 'var(--accent)' : 'var(--text)',
                   fontWeight: isActive ? 600 : 500,
                 }}
@@ -170,8 +170,8 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
               rel="noreferrer"
               style={{
                 display: 'block',
-                padding: '6px 0',
-                fontSize: 11,
+                padding: '10px 0',
+                fontSize: 12,
                 borderTop: '1px solid var(--divider)',
                 color: 'var(--text)',
               }}
@@ -181,13 +181,13 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
                   title={i.label}
                   style={{
                     display: 'inline-block',
-                    width: 100,
-                    padding: '1px 6px',
-                    marginRight: 6,
-                    borderRadius: 4,
+                    width: 110,
+                    padding: '2px 8px',
+                    marginRight: 8,
+                    borderRadius: 5,
                     background: colors.bg,
                     color: colors.fg,
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: 600,
                     letterSpacing: '0.2px',
                     textAlign: 'center',
@@ -200,16 +200,16 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
                 >
                   {i.label}
                 </span>
-                <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
+                <span style={{ color: 'var(--text-dim)', marginRight: 8 }}>{ago(i.timestamp)}</span>
                 {i.title}
               </div>
               {i.snippet && (
                 <div
                   style={{
-                    marginTop: 3,
-                    fontSize: 10,
+                    marginTop: 5,
+                    fontSize: 11,
                     color: 'var(--text-dim)',
-                    lineHeight: 1.4,
+                    lineHeight: 1.45,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',

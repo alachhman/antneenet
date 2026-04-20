@@ -26,7 +26,8 @@ export function View(_: { instanceId: string; config: HabitsConfig }) {
             onClick={() => toggle.mutate({ habitId: h.id, date: today, on: !done })}
             style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              width: '100%', padding: '4px 0', fontSize: 11,
+              width: '100%', padding: '8px 0', fontSize: 13,
+              borderTop: '1px solid var(--divider)',
             }}
           >
             <span>{h.name}</span>

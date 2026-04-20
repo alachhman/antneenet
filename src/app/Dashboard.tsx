@@ -102,9 +102,9 @@ export function Dashboard() {
         layouts={layouts as any}
         breakpoints={BREAKPOINTS}
         cols={COLS}
-        rowHeight={60}
-        margin={[14, 14]}
-        containerPadding={[14, 14]}
+        rowHeight={72}
+        margin={[20, 20]}
+        containerPadding={[24, 24]}
         isDraggable={editMode}
         isResizable={editMode}
         onLayoutChange={handleLayoutChange}

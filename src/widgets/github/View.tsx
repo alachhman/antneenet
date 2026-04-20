@@ -179,14 +179,15 @@ function LabelPill({ label }: { label: GhLabel }) {
     <span
       style={{
         display: 'inline-block',
-        padding: '1px 6px',
+        padding: '2px 8px',
         borderRadius: 10,
         background: hex,
         color: contrastText(hex),
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: 600,
         letterSpacing: '0.1px',
-        marginRight: 4,
+        marginRight: 5,
+        marginBottom: 3,
         whiteSpace: 'nowrap',
       }}
     >
@@ -224,8 +225,8 @@ function StatTab({
       disabled={!clickable}
       style={{
         boxShadow: active ? 'var(--inset)' : 'var(--raised-sm)',
-        borderRadius: 8,
-        padding: '8px 10px',
+        borderRadius: 10,
+        padding: '12px 14px',
         textAlign: 'center',
         cursor: clickable ? 'pointer' : 'default',
         transition: 'box-shadow 0.15s ease',
@@ -233,7 +234,7 @@ function StatTab({
     >
       <div
         style={{
-          fontSize: 20,
+          fontSize: 22,
           fontWeight: 500,
           color: active ? 'var(--accent)' : 'var(--text)',
           lineHeight: 1.1,
@@ -243,11 +244,11 @@ function StatTab({
       </div>
       <div
         style={{
-          fontSize: 9,
+          fontSize: 10,
           color: 'var(--text-dim)',
           textTransform: 'uppercase',
           letterSpacing: '0.4px',
-          marginTop: 2,
+          marginTop: 4,
         }}
       >
         {label}
@@ -264,7 +265,7 @@ const cardLinkStyle: React.CSSProperties = {
   display: 'block',
   boxShadow: 'var(--raised-sm)',
   borderRadius: 'var(--radius-inset)',
-  padding: '10px 12px',
+  padding: '14px 16px',
   color: 'var(--text)',
   transition: 'box-shadow 0.15s ease',
 };
@@ -277,17 +278,17 @@ function CommitCard({ commit }: { commit: Commit }) {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          marginBottom: 6,
+          marginBottom: 8,
         }}
       >
         <span
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: 10,
+            fontSize: 11,
             color: 'var(--accent)',
             background: 'rgba(20, 184, 166, 0.14)',
-            padding: '1px 6px',
-            borderRadius: 4,
+            padding: '2px 7px',
+            borderRadius: 5,
             flexShrink: 0,
           }}
         >
@@ -295,7 +296,7 @@ function CommitCard({ commit }: { commit: Commit }) {
         </span>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 500,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -311,14 +312,14 @@ function CommitCard({ commit }: { commit: Commit }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          rowGap: 4,
-          fontSize: 10,
+          gap: 8,
+          rowGap: 6,
+          fontSize: 11,
           color: 'var(--text-dim)',
           flexWrap: 'wrap',
         }}
       >
-        <Avatar src={commit.author.avatarUrl} alt={commit.author.name ?? 'author'} size={16} />
+        <Avatar src={commit.author.avatarUrl} alt={commit.author.name ?? 'author'} size={18} />
         <span>{commit.author.login ?? commit.author.name}</span>
         <span>·</span>
         <span>{ago(commit.date)}</span>
@@ -344,18 +345,18 @@ function PRCard({ pr }: { pr: PR }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 6,
+          gap: 8,
+          marginBottom: 8,
         }}
       >
         {pr.isDraft && (
           <span
             style={{
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: 600,
               background: 'var(--shadow-dark)',
               color: 'var(--text-dim)',
-              padding: '1px 6px',
+              padding: '2px 7px',
               borderRadius: 10,
               flexShrink: 0,
             }}
@@ -363,10 +364,10 @@ function PRCard({ pr }: { pr: PR }) {
             DRAFT
           </span>
         )}
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>#{pr.number}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>#{pr.number}</span>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 500,
             flex: 1,
             minWidth: 0,
@@ -379,7 +380,7 @@ function PRCard({ pr }: { pr: PR }) {
         </span>
       </div>
       {pr.labels.length > 0 && (
-        <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 8 }}>
           {pr.labels.map((l) => (
             <LabelPill key={l.name} label={l} />
           ))}
@@ -390,12 +391,13 @@ function PRCard({ pr }: { pr: PR }) {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          fontSize: 10,
+          rowGap: 6,
+          fontSize: 11,
           color: 'var(--text-dim)',
           flexWrap: 'wrap',
         }}
       >
-        <Avatar src={pr.author?.avatarUrl ?? null} alt={pr.author?.login ?? 'author'} size={16} />
+        <Avatar src={pr.author?.avatarUrl ?? null} alt={pr.author?.login ?? 'author'} size={18} />
         <span>{pr.author?.login ?? 'ghost'}</span>
         <span>·</span>
         <span>{ago(pr.updatedAt)}</span>
@@ -411,9 +413,9 @@ function PRCard({ pr }: { pr: PR }) {
       {(pr.baseRefName || pr.headRefName) && (
         <div
           style={{
-            marginTop: 4,
+            marginTop: 6,
             fontFamily: 'var(--font-mono)',
-            fontSize: 10,
+            fontSize: 11,
             color: 'var(--text-dim)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -421,7 +423,7 @@ function PRCard({ pr }: { pr: PR }) {
           }}
         >
           <span>{pr.headRefName}</span>
-          <span style={{ margin: '0 4px' }}>→</span>
+          <span style={{ margin: '0 6px' }}>→</span>
           <span>{pr.baseRefName}</span>
         </div>
       )}
@@ -543,14 +545,14 @@ function IssueCard({ issue }: { issue: Issue }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 6,
+          gap: 8,
+          marginBottom: 8,
         }}
       >
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>#{issue.number}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>#{issue.number}</span>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 500,
             flex: 1,
             minWidth: 0,
@@ -563,7 +565,7 @@ function IssueCard({ issue }: { issue: Issue }) {
         </span>
       </div>
       {issue.labels.length > 0 && (
-        <div style={{ marginBottom: 6 }}>
+        <div style={{ marginBottom: 8 }}>
           {issue.labels.map((l) => (
             <LabelPill key={l.name} label={l} />
           ))}
@@ -574,12 +576,13 @@ function IssueCard({ issue }: { issue: Issue }) {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          fontSize: 10,
+          rowGap: 6,
+          fontSize: 11,
           color: 'var(--text-dim)',
           flexWrap: 'wrap',
         }}
       >
-        <Avatar src={issue.author?.avatarUrl ?? null} alt={issue.author?.login ?? 'author'} size={16} />
+        <Avatar src={issue.author?.avatarUrl ?? null} alt={issue.author?.login ?? 'author'} size={18} />
         <span>{issue.author?.login ?? 'ghost'}</span>
         <span>·</span>
         <span>{ago(issue.updatedAt)}</span>
@@ -592,9 +595,9 @@ function IssueCard({ issue }: { issue: Issue }) {
         {issue.assignees.length > 0 && (
           <>
             <span>·</span>
-            <div style={{ display: 'flex', gap: 2 }}>
+            <div style={{ display: 'flex', gap: 3 }}>
               {issue.assignees.map((a) => (
-                <Avatar key={a.login} src={a.avatarUrl} alt={a.login} size={14} />
+                <Avatar key={a.login} src={a.avatarUrl} alt={a.login} size={16} />
               ))}
             </div>
           </>
@@ -618,7 +621,7 @@ function KanbanPills({
   onToggle: (name: string) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {columns.map((col) => {
         const isExpanded = expanded === col.name;
         return (
@@ -627,9 +630,9 @@ function KanbanPills({
             onClick={() => onToggle(col.name)}
             style={{
               boxShadow: isExpanded ? 'var(--inset)' : 'var(--raised-sm)',
-              padding: '3px 10px',
-              borderRadius: 6,
-              fontSize: 10,
+              padding: '5px 14px',
+              borderRadius: 8,
+              fontSize: 11,
               color: isExpanded ? 'var(--accent)' : 'var(--text)',
             }}
           >
@@ -654,7 +657,7 @@ function KanbanExpanded({
   const col = project.columns.find((c) => c.name === expanded);
   if (!col) return null;
   return (
-    <div style={{ marginTop: 8 }}>
+    <div style={{ marginTop: 14 }}>
       <CardGrid isDesktop={isDesktop}>
         {col.items.map((item, idx) => (
           <ProjectItemCard key={idx} item={item} />
@@ -687,8 +690,8 @@ function CardGrid({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr',
-        gap: 8,
+        gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(320px, 1fr))' : '1fr',
+        gap: 12,
         alignItems: 'start',
       }}
     >
@@ -777,8 +780,8 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${isDesktop ? 4 : 2}, 1fr)`,
-          gap: 8,
-          marginBottom: 10,
+          gap: 12,
+          marginBottom: 16,
         }}
       >
         <StatTab
@@ -812,7 +815,7 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
 
       {/* Kanban pills + expanded cards. Not a tab; always visible. */}
       {data.project && (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 18 }}>
           <KanbanPills
             columns={data.project.columns}
             expanded={expandedColumn}

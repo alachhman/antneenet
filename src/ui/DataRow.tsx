@@ -15,8 +15,8 @@ export function DataRow({ label, value, trend = 'neutral' }: Props) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        fontSize: 11,
-        padding: '3px 0',
+        fontSize: 12,
+        padding: '6px 0',
         borderTop: '1px solid var(--divider)',
       }}
     >
