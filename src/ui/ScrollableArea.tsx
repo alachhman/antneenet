@@ -76,7 +76,7 @@ function ScrollHint({ visible }: { visible: boolean }) {
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
-        paddingBottom: 6,
+        paddingBottom: 16,
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.2s ease',
       }}

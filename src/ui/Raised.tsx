@@ -14,7 +14,9 @@ export function Raised({
         background: 'var(--bg)',
         borderRadius: 'var(--radius-card)',
         boxShadow: 'var(--raised)',
-        padding: 'var(--space-4)',
+        // Slightly tighter on top so the widget label doesn't feel like
+        // it's floating; sides + bottom stay at the full --space-4.
+        padding: '12px var(--space-4) var(--space-4)',
         ...style,
       }}
     >
