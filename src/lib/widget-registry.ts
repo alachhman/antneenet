@@ -5,6 +5,7 @@ import { bookmarksDefinition } from '../widgets/bookmarks';
 import { habitsDefinition } from '../widgets/habits';
 import { weatherDefinition } from '../widgets/weather';
 import { stocksDefinition } from '../widgets/stocks';
+import { techFeedDefinition } from '../widgets/tech-feed';
 
 export const registry: Record<WidgetType, AnyWidgetDefinition> = {
   demo: demoDefinition,
@@ -12,6 +13,7 @@ export const registry: Record<WidgetType, AnyWidgetDefinition> = {
   habits: habitsDefinition,
   weather: weatherDefinition,
   stocks: stocksDefinition,
+  'tech-feed': techFeedDefinition,
 } as Record<WidgetType, AnyWidgetDefinition>;
 
 export function getDefinition(type: WidgetType): AnyWidgetDefinition | undefined {
