@@ -20,7 +20,7 @@ export function useHabits() {
   });
 }
 
-export function useCheckins(days = 7) {
+export function useCheckins(days = 30) {
   return useQuery({
     queryKey: ['habit_checkins', days],
     queryFn: async () => {
