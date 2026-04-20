@@ -36,7 +36,7 @@ export function SettingsDrawer({ instanceId, onClose }: Props) {
       <Raised
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 340, maxWidth: '100%', height: '100%',
+          width: 480, maxWidth: '100%', height: '100%',
           borderRadius: 0,
           padding: 'var(--space-4)',
           overflow: 'auto',
