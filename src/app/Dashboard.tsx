@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
+import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+import type { LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
 import { TopBar } from './TopBar';
 import { WidgetCard } from './WidgetCard';
 import { SettingsDrawer } from './SettingsDrawer';
@@ -40,7 +41,7 @@ export function Dashboard() {
     return defaultLayoutsFor(instances, defaultSizes);
   }, [storedLayouts, instances, defaultSizes]);
 
-  function handleLayoutChange(_cur: Layout[], all: { [bp: string]: Layout[] }) {
+  function handleLayoutChange(_cur: readonly LayoutItem[], all: ResponsiveLayouts) {
     if (!editMode) return;
     const next: LayoutsByBreakpoint = {
       lg: (all.lg ?? []).map(toItem),
@@ -110,6 +111,6 @@ export function Dashboard() {
   );
 }
 
-function toItem(l: Layout) {
+function toItem(l: LayoutItem) {
   return { i: l.i, x: l.x, y: l.y, w: l.w, h: l.h };
 }
