@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "db:push": "supabase db push",
     "db:seed": "tsx supabase/scripts/seed.ts",
-    "fn:deploy": "supabase functions deploy login weather stocks tech-feed"
+    "fn:deploy": "supabase functions deploy login weather stocks tech-feed",
+    "rotate-password": "tsx supabase/scripts/rotate-password.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
