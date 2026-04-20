@@ -1,0 +1,25 @@
+import { describe, it, expect } from 'vitest';
+import { registry, getDefinition, listWidgetTypes } from './widget-registry';
+
+describe('widget registry', () => {
+  it('contains the demo widget', () => {
+    expect(listWidgetTypes()).toContain('demo');
+    expect(getDefinition('demo')).toBeDefined();
+  });
+
+  it('returns undefined for unknown types', () => {
+    // @ts-expect-error intentional
+    expect(getDefinition('bogus')).toBeUndefined();
+  });
+
+  it('every registered definition has required fields', () => {
+    for (const def of Object.values(registry)) {
+      expect(def.type).toBeTruthy();
+      expect(def.displayName).toBeTruthy();
+      expect(def.defaultSize.w).toBeGreaterThan(0);
+      expect(def.defaultSize.h).toBeGreaterThan(0);
+      expect(def.View).toBeDefined();
+      expect(def.Settings).toBeDefined();
+    }
+  });
+});
