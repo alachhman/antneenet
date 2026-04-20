@@ -6,9 +6,9 @@ vi.mock('./supabase', () => ({ supabase: { from: vi.fn(), auth: {} } }));
 import { registry, getDefinition, listWidgetTypes } from './widget-registry';
 
 describe('widget registry', () => {
-  it('contains all MVP widgets', () => {
+  it('contains all registered widgets', () => {
     expect(listWidgetTypes().sort()).toEqual(
-      ['bookmarks', 'habits', 'stocks', 'tech-feed', 'weather'],
+      ['bookmarks', 'github', 'habits', 'stocks', 'tech-feed', 'weather'],
     );
   });
 

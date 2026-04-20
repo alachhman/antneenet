@@ -1,7 +1,7 @@
 // Hand-written subset of the schema. Replace with `supabase gen types typescript` later
 // (script: `npm run types` — see future task). For MVP, these are sufficient.
 
-export type WidgetType = 'bookmarks' | 'weather' | 'habits' | 'stocks' | 'tech-feed';
+export type WidgetType = 'bookmarks' | 'weather' | 'habits' | 'stocks' | 'tech-feed' | 'github';
 
 export type Breakpoint = 'lg' | 'md' | 'sm' | 'xs';
 

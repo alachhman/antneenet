@@ -1,0 +1,203 @@
+// GitHub stats proxy. Needs GITHUB_TOKEN secret (fine-grained PAT with repo access).
+// Runs a single GraphQL query per request and returns normalized stats.
+
+const TOKEN = Deno.env.get('GITHUB_TOKEN')!;
+const GQL = 'https://api.github.com/graphql';
+
+function cors() {
+  return {
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
+    'access-control-allow-methods': 'POST, OPTIONS',
+    'content-type': 'application/json',
+  };
+}
+
+type Body = { owner: string; repo: string; projectNumber: number };
+
+const QUERY = `
+query($owner: String!, $repo: String!, $projectNumber: Int!, $since: GitTimestamp!) {
+  repository(owner: $owner, name: $repo) {
+    defaultBranchRef {
+      target {
+        ... on Commit {
+          history(since: $since, first: 20) {
+            totalCount
+            nodes {
+              oid
+              messageHeadline
+              committedDate
+              url
+            }
+          }
+        }
+      }
+    }
+    pullRequests(states: OPEN, first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      totalCount
+      nodes { number title url }
+    }
+    issues(states: OPEN, first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      totalCount
+      nodes { number title url }
+    }
+    projectV2(number: $projectNumber) {
+      title
+      url
+      field(name: "Status") {
+        ... on ProjectV2SingleSelectField {
+          options { id name }
+        }
+      }
+      items(first: 100) {
+        nodes {
+          content {
+            __typename
+            ... on Issue { title url }
+            ... on PullRequest { title url }
+            ... on DraftIssue { title }
+          }
+          fieldValueByName(name: "Status") {
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+              optionId
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors() });
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'POST only' }), { status: 405, headers: cors() });
+  }
+  if (!TOKEN) {
+    return new Response(JSON.stringify({ error: 'GITHUB_TOKEN not configured' }), { status: 500, headers: cors() });
+  }
+
+  let body: Body;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'invalid json' }), { status: 400, headers: cors() });
+  }
+  if (!body.owner || !body.repo) {
+    return new Response(JSON.stringify({ error: 'owner and repo required' }), { status: 400, headers: cors() });
+  }
+
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const r = await fetch(GQL, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${TOKEN}`,
+      'content-type': 'application/json',
+      'user-agent': 'antneenet-dashboard',
+    },
+    body: JSON.stringify({
+      query: QUERY,
+      variables: {
+        owner: body.owner,
+        repo: body.repo,
+        projectNumber: Number(body.projectNumber) || 0,
+        since,
+      },
+    }),
+  });
+
+  if (!r.ok) {
+    const text = await r.text();
+    return new Response(JSON.stringify({ error: `GitHub API ${r.status}`, detail: text }), {
+      status: 502,
+      headers: cors(),
+    });
+  }
+
+  const j = await r.json();
+  if (j.errors) {
+    return new Response(JSON.stringify({ error: 'GraphQL errors', errors: j.errors }), {
+      status: 502,
+      headers: cors(),
+    });
+  }
+
+  const repoData = j.data?.repository;
+  if (!repoData) {
+    return new Response(JSON.stringify({ error: 'repository not found or no access' }), {
+      status: 404,
+      headers: cors(),
+    });
+  }
+
+  const history = repoData.defaultBranchRef?.target?.history ?? { totalCount: 0, nodes: [] };
+  const commits = {
+    total: history.totalCount,
+    items: (history.nodes ?? []).slice(0, 10).map((n: any) => ({
+      sha: n.oid?.slice(0, 7) ?? '',
+      message: n.messageHeadline,
+      url: n.url,
+      date: n.committedDate,
+    })),
+  };
+
+  const openPRs = {
+    total: repoData.pullRequests?.totalCount ?? 0,
+    items: (repoData.pullRequests?.nodes ?? []).slice(0, 5).map((n: any) => ({
+      number: n.number,
+      title: n.title,
+      url: n.url,
+    })),
+  };
+
+  const openIssues = {
+    total: repoData.issues?.totalCount ?? 0,
+    items: (repoData.issues?.nodes ?? []).slice(0, 5).map((n: any) => ({
+      number: n.number,
+      title: n.title,
+      url: n.url,
+    })),
+  };
+
+  let project: {
+    title: string;
+    url: string;
+    columns: Array<{ name: string; total: number; items: Array<{ title: string; url: string | null }> }>;
+  } | null = null;
+
+  if (repoData.projectV2) {
+    const options: Array<{ id: string; name: string }> = repoData.projectV2.field?.options ?? [];
+    const grouped: Record<string, Array<{ title: string; url: string | null }>> = {};
+    for (const opt of options) grouped[opt.name] = [];
+    for (const item of repoData.projectV2.items?.nodes ?? []) {
+      const statusName: string | undefined = item.fieldValueByName?.name;
+      if (!statusName || !(statusName in grouped)) continue;
+      const title: string = item.content?.title ?? '(untitled)';
+      const url: string | null = item.content?.url ?? null;
+      grouped[statusName].push({ title, url });
+    }
+    project = {
+      title: repoData.projectV2.title,
+      url: repoData.projectV2.url,
+      columns: options.map((opt) => ({
+        name: opt.name,
+        total: grouped[opt.name].length,
+        items: grouped[opt.name].slice(0, 10),
+      })),
+    };
+  }
+
+  return new Response(
+    JSON.stringify({
+      owner: body.owner,
+      repo: body.repo,
+      commits,
+      openPRs,
+      openIssues,
+      project,
+    }),
+    { headers: cors() },
+  );
+});
