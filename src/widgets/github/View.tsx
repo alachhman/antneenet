@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Label } from '../../ui';
+import { Label, ScrollableArea } from '../../ui';
 
 export type GithubConfig = {
   owner: string;
@@ -827,7 +827,7 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
 
       {/* Active tab content — rich cards, tiled on desktop.
           Expanded kanban column (if any) scrolls alongside. */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      <ScrollableArea>
         {data.project && expandedColumn && (
           <div style={{ marginBottom: 16 }}>
             <KanbanExpanded
@@ -896,7 +896,7 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
             )}
           </>
         )}
-      </div>
+      </ScrollableArea>
     </div>
   );
 }

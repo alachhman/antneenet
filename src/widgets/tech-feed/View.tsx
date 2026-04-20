@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Label } from '../../ui';
+import { Label, ScrollableArea } from '../../ui';
 
 type FeedSource = { type: 'hn' | 'reddit' | 'rss'; value: string };
 type FeedCategory = { name: string; sources: FeedSource[] };
@@ -156,7 +156,7 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
       )}
 
       {/* Feed items for active category */}
-      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+      <ScrollableArea>
         {activeIsLoading && (
           <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Loading…</div>
         )}
@@ -222,7 +222,7 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
             </a>
           );
         })}
-      </div>
+      </ScrollableArea>
     </div>
   );
 }
