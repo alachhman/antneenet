@@ -67,7 +67,7 @@ async function fetchHN(): Promise<Item[]> {
         title: s.title,
         url: s.url ?? `https://news.ycombinator.com/item?id=${id}`,
         source: 'hn' as const,
-        label: 'hn',
+        label: 'Hacker News',
         timestamp: (s.time ?? 0) * 1000,
         // HN API doesn't include a snippet for link posts; leave blank per spec.
         snippet: '',
@@ -123,6 +123,14 @@ async function fetchReddit(sub: string): Promise<Item[]> {
   }
 }
 
+function hostLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'rss';
+  }
+}
+
 async function fetchRSS(feed: string): Promise<Item[]> {
   try {
     const r = await fetch(feed);
@@ -134,6 +142,11 @@ async function fetchRSS(feed: string): Promise<Item[]> {
     const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
     const doc = parser.parse(text);
     const entries = doc?.rss?.channel?.item ?? doc?.feed?.entry ?? [];
+    // Prefer the feed's own declared title over the URL hostname.
+    const feedTitle: string | undefined =
+      doc?.rss?.channel?.title ??
+      (typeof doc?.feed?.title === 'string' ? doc.feed.title : doc?.feed?.title?.['#text']);
+    const label = feedTitle ? String(feedTitle).trim() : hostLabel(feed);
     return (Array.isArray(entries) ? entries : [entries])
       .slice(0, 15)
       .map((e: any) => {
@@ -144,7 +157,7 @@ async function fetchRSS(feed: string): Promise<Item[]> {
           title: (e.title?.['#text'] ?? e.title) ?? '',
           url: link ?? '',
           source: 'rss' as const,
-          label: 'rss',
+          label,
           timestamp: pub ? Date.parse(pub) : 0,
           snippet: rssSnippet(e),
         } satisfies Item;

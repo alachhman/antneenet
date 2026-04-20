@@ -65,7 +65,22 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
           }}
         >
           <div>
-            <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{i.label}</span>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '1px 6px',
+                marginRight: 6,
+                borderRadius: 4,
+                background: 'rgba(20, 184, 166, 0.14)',
+                color: 'var(--accent)',
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.2px',
+                verticalAlign: '1px',
+              }}
+            >
+              {i.label}
+            </span>
             <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
             {i.title}
           </div>
