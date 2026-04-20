@@ -1,0 +1,51 @@
+import { Inset } from '../ui';
+import { useEditMode } from './store';
+import { logout } from '../lib/auth';
+import { useNavigate } from 'react-router-dom';
+
+export function TopBar() {
+  const { editMode, toggle } = useEditMode();
+  const navigate = useNavigate();
+
+  async function onLogout() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: 'var(--space-3) var(--space-4)', gap: 'var(--space-4)',
+    }}>
+      <div style={{ fontSize: 18, fontWeight: 600 }}>Dashboard</div>
+      <Inset style={{ flex: 1, maxWidth: 360, color: 'var(--text-dim)' }}>
+        <span style={{ fontSize: 11 }}>⌕ search ⌘K</span>
+      </Inset>
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <button
+          onClick={toggle}
+          style={{
+            padding: 'var(--space-1) var(--space-3)',
+            boxShadow: editMode ? 'var(--inset)' : 'var(--raised-sm)',
+            borderRadius: 'var(--radius-inset)',
+            color: editMode ? 'var(--accent)' : 'var(--text)',
+            fontSize: 12,
+          }}
+        >
+          {editMode ? 'Done' : 'Edit'}
+        </button>
+        <button
+          onClick={onLogout}
+          style={{
+            padding: 'var(--space-1) var(--space-3)',
+            boxShadow: 'var(--raised-sm)',
+            borderRadius: 'var(--radius-inset)',
+            fontSize: 12,
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
