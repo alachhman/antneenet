@@ -13,9 +13,9 @@ describe('defaultLayoutsFor', () => {
 
   it('produces a grid item for each instance in each breakpoint', () => {
     const layouts = defaultLayoutsFor([
-      { id: 'a', widget_type: 'demo', config: {}, created_at: '' },
-      { id: 'b', widget_type: 'demo', config: {}, created_at: '' },
-    ], { demo: { w: 3, h: 2 } });
+      { id: 'a', widget_type: 'bookmarks', config: {}, created_at: '' },
+      { id: 'b', widget_type: 'bookmarks', config: {}, created_at: '' },
+    ], { bookmarks: { w: 3, h: 2 } });
     expect(layouts.lg.length).toBe(2);
     expect(layouts.xs.length).toBe(2);
     expect(layouts.lg[0].i).toBe('a');
@@ -23,8 +23,8 @@ describe('defaultLayoutsFor', () => {
 
   it('stacks widgets on xs with w=2', () => {
     const layouts = defaultLayoutsFor([
-      { id: 'a', widget_type: 'demo', config: {}, created_at: '' },
-    ], { demo: { w: 3, h: 2 } });
+      { id: 'a', widget_type: 'bookmarks', config: {}, created_at: '' },
+    ], { bookmarks: { w: 3, h: 2 } });
     expect(layouts.xs[0].w).toBe(2);
   });
 });

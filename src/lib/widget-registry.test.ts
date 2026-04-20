@@ -6,9 +6,10 @@ vi.mock('./supabase', () => ({ supabase: { from: vi.fn(), auth: {} } }));
 import { registry, getDefinition, listWidgetTypes } from './widget-registry';
 
 describe('widget registry', () => {
-  it('contains the demo widget', () => {
-    expect(listWidgetTypes()).toContain('demo');
-    expect(getDefinition('demo')).toBeDefined();
+  it('contains all MVP widgets', () => {
+    expect(listWidgetTypes().sort()).toEqual(
+      ['bookmarks', 'habits', 'stocks', 'tech-feed', 'weather'],
+    );
   });
 
   it('returns undefined for unknown types', () => {
