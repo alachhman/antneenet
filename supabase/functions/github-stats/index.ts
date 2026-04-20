@@ -41,28 +41,32 @@ query($owner: String!, $repo: String!, $projectNumber: Int!, $since: GitTimestam
       totalCount
       nodes { number title url }
     }
-    projectV2(number: $projectNumber) {
-      title
-      url
-      field(name: "Status") {
-        ... on ProjectV2SingleSelectField {
-          options { id name }
-        }
+  }
+  user(login: $owner) {
+    projectV2(number: $projectNumber) { ...projectFields }
+  }
+}
+
+fragment projectFields on ProjectV2 {
+  title
+  url
+  field(name: "Status") {
+    ... on ProjectV2SingleSelectField {
+      options { id name }
+    }
+  }
+  items(first: 100) {
+    nodes {
+      content {
+        __typename
+        ... on Issue { title url }
+        ... on PullRequest { title url }
+        ... on DraftIssue { title }
       }
-      items(first: 100) {
-        nodes {
-          content {
-            __typename
-            ... on Issue { title url }
-            ... on PullRequest { title url }
-            ... on DraftIssue { title }
-          }
-          fieldValueByName(name: "Status") {
-            ... on ProjectV2ItemFieldSingleSelectValue {
-              name
-              optionId
-            }
-          }
+      fieldValueByName(name: "Status") {
+        ... on ProjectV2ItemFieldSingleSelectValue {
+          name
+          optionId
         }
       }
     }
@@ -167,11 +171,13 @@ Deno.serve(async (req) => {
     columns: Array<{ name: string; total: number; items: Array<{ title: string; url: string | null }> }>;
   } | null = null;
 
-  if (repoData.projectV2) {
-    const options: Array<{ id: string; name: string }> = repoData.projectV2.field?.options ?? [];
+  // Project is queried at user scope (user-owned projects).
+  const projectNode = j.data?.user?.projectV2 ?? null;
+  if (projectNode) {
+    const options: Array<{ id: string; name: string }> = projectNode.field?.options ?? [];
     const grouped: Record<string, Array<{ title: string; url: string | null }>> = {};
     for (const opt of options) grouped[opt.name] = [];
-    for (const item of repoData.projectV2.items?.nodes ?? []) {
+    for (const item of projectNode.items?.nodes ?? []) {
       const statusName: string | undefined = item.fieldValueByName?.name;
       if (!statusName || !(statusName in grouped)) continue;
       const title: string = item.content?.title ?? '(untitled)';
@@ -179,8 +185,8 @@ Deno.serve(async (req) => {
       grouped[statusName].push({ title, url });
     }
     project = {
-      title: repoData.projectV2.title,
-      url: repoData.projectV2.url,
+      title: projectNode.title,
+      url: projectNode.url,
       columns: options.map((opt) => ({
         name: opt.name,
         total: grouped[opt.name].length,
