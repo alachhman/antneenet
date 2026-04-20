@@ -27,7 +27,7 @@ export function SettingsDrawer({ instanceId, onClose }: Props) {
       aria-label="widget settings"
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.35)',
+        background: 'var(--overlay)',
         display: 'flex', justifyContent: 'flex-end',
         zIndex: 50,
       }}
@@ -50,7 +50,7 @@ export function SettingsDrawer({ instanceId, onClose }: Props) {
           config={inst.config as any}
           onChange={(next) => update.mutate({ id: inst.id, config: next as Record<string, unknown> })}
         />
-        <div style={{ marginTop: 'var(--space-5)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 'var(--space-3)' }}>
+        <div style={{ marginTop: 'var(--space-5)', borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-3)' }}>
           <button
             onClick={() => {
               if (confirm(`Remove ${def.displayName}?`)) {

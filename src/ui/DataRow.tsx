@@ -17,7 +17,7 @@ export function DataRow({ label, value, trend = 'neutral' }: Props) {
         alignItems: 'center',
         fontSize: 11,
         padding: '3px 0',
-        borderTop: '1px solid rgba(255,255,255,0.04)',
+        borderTop: '1px solid var(--divider)',
       }}
     >
       <span>{label}</span>

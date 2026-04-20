@@ -1,15 +1,17 @@
 :root {
-  /* palette: deep navy + cyan */
-  --bg: #1a2332;
-  --accent: #22d3ee;
-  --text: #cbd5e1;
-  --text-dim: #64748b;
-  --up: #34d399;
-  --down: #fb7185;
+  /* palette: pale sky + teal */
+  --bg: #e8edf2;
+  --accent: #14b8a6;           /* teal-500 */
+  --text: #1e293b;             /* slate-800 */
+  --text-dim: #64748b;         /* slate-500 */
+  --up: #16a34a;               /* green-600 — deeper for light bg */
+  --down: #dc2626;             /* red-600 — deeper for light bg */
+  --divider: rgba(30, 41, 59, 0.08);  /* slate-800 at low opacity */
+  --overlay: rgba(15, 23, 42, 0.35);  /* modal dim */
 
   /* neumorphic shadows derived from --bg */
-  --shadow-dark: #0f1826;
-  --shadow-light: #253041;
+  --shadow-dark: #c7cdd4;      /* soft gray shadow */
+  --shadow-light: #ffffff;     /* white highlight */
   --raised:
     6px 6px 14px var(--shadow-dark),
     -6px -6px 14px var(--shadow-light);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '../../ui';
 
@@ -47,6 +47,22 @@ function ago(iso: string) {
   return `${Math.floor(s / 86400)}d`;
 }
 
+// Desktop breakpoint matches react-grid-layout's md cutoff.
+const DESKTOP_BP = 768;
+
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BP : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${DESKTOP_BP}px)`);
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isDesktop;
+}
+
 const linkStyle: React.CSSProperties = {
   color: 'var(--text)',
   display: 'block',
@@ -56,7 +72,7 @@ const linkStyle: React.CSSProperties = {
 };
 
 export function View({ config }: { instanceId: string; config: GithubConfig }) {
-  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+  const isDesktop = useIsDesktop();
   const { data, isLoading, error } = useQuery({
     queryKey: ['github-stats', config.owner, config.repo, config.projectNumber],
     queryFn: () => fetchStats(config),
@@ -76,171 +92,245 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
     );
   }
 
+  const header = (
+    <Label>
+      <a
+        href={`https://github.com/${config.owner}/${config.repo}`}
+        target="_blank"
+        rel="noreferrer"
+        style={{ color: 'var(--accent)' }}
+      >
+        {config.owner}/{config.repo}
+      </a>
+    </Label>
+  );
+
+  if (isLoading) {
+    return (
+      <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
+        {header}
+        <div style={{ color: 'var(--text-dim)' }}>Loading…</div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
+        {header}
+        <div style={{ color: 'var(--down)' }}>
+          {error instanceof Error ? error.message : 'error loading'}
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return isDesktop ? (
+    <DesktopView config={config} data={data} header={header} />
+  ) : (
+    <MobileView config={config} data={data} header={header} />
+  );
+}
+
+// ------------------------------------------------------------------
+// Mobile view — vertical, compact. Same as the original layout.
+// ------------------------------------------------------------------
+function MobileView({
+  config,
+  data,
+  header,
+}: {
+  config: GithubConfig;
+  data: Stats;
+  header: React.ReactNode;
+}) {
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   return (
     <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
-      <Label>
-        <a
-          href={`https://github.com/${config.owner}/${config.repo}`}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: 'var(--accent)' }}
-        >
-          {config.owner}/{config.repo}
-        </a>
-      </Label>
+      {header}
 
-      {isLoading && <div style={{ color: 'var(--text-dim)' }}>Loading…</div>}
-      {error && (
-        <div style={{ color: 'var(--down)', fontSize: 11 }}>
-          {error instanceof Error ? error.message : 'error loading'}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 6,
+          marginBottom: 10,
+        }}
+      >
+        <Stat label="commits/wk" value={data.commits.total} />
+        <Stat label="open PRs" value={data.openPRs.total} />
+        <Stat label="open issues" value={data.openIssues.total} />
+      </div>
+
+      {data.commits.items.length > 0 && (
+        <Section title={`commits · ${data.commits.total}`}>
+          <CommitsList items={data.commits.items} />
+          {data.commits.total > data.commits.items.length && (
+            <MoreLink owner={config.owner} repo={config.repo} path="commits" />
+          )}
+        </Section>
+      )}
+
+      {data.openPRs.items.length > 0 && (
+        <Section title={`PRs · ${data.openPRs.total}`}>
+          <NumberedList items={data.openPRs.items} />
+          {data.openPRs.total > data.openPRs.items.length && (
+            <MoreLink owner={config.owner} repo={config.repo} path="pulls" />
+          )}
+        </Section>
+      )}
+
+      {data.openIssues.items.length > 0 && (
+        <Section title={`issues · ${data.openIssues.total}`}>
+          <NumberedList items={data.openIssues.items} />
+          {data.openIssues.total > data.openIssues.items.length && (
+            <MoreLink owner={config.owner} repo={config.repo} path="issues" />
+          )}
+        </Section>
+      )}
+
+      {data.project && (
+        <Section
+          title={
+            <a
+              href={data.project.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'inherit' }}
+            >
+              {data.project.title}
+            </a>
+          }
+        >
+          <KanbanPills
+            columns={data.project.columns}
+            expanded={expandedColumn}
+            onToggle={(name) => setExpandedColumn(expandedColumn === name ? null : name)}
+          />
+          <KanbanExpanded project={data.project} expanded={expandedColumn} />
+        </Section>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Desktop view — hero banner + two-column layout (layout C).
+// ------------------------------------------------------------------
+function DesktopView({
+  config,
+  data,
+  header,
+}: {
+  config: GithubConfig;
+  data: Stats;
+  header: React.ReactNode;
+}) {
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+
+  const kanbanTotal =
+    data.project?.columns.reduce((sum, c) => sum + c.total, 0) ?? 0;
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        fontSize: 11,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}
+    >
+      {header}
+
+      {/* Hero banner: 4 stat tiles */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 8,
+          marginBottom: 10,
+        }}
+      >
+        <Stat label="commits this week" value={data.commits.total} big />
+        <Stat label="open PRs" value={data.openPRs.total} big />
+        <Stat label="open issues" value={data.openIssues.total} big />
+        <Stat label={data.project?.title ?? 'project'} value={kanbanTotal} big />
+      </div>
+
+      {/* Kanban column pills (always visible) */}
+      {data.project && (
+        <div style={{ marginBottom: 10 }}>
+          <KanbanPills
+            columns={data.project.columns}
+            expanded={expandedColumn}
+            onToggle={(name) => setExpandedColumn(expandedColumn === name ? null : name)}
+          />
+          <KanbanExpanded project={data.project} expanded={expandedColumn} />
         </div>
       )}
 
-      {data && (
-        <>
-          {/* Stats row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: 6,
-              marginBottom: 10,
-            }}
-          >
-            <Stat label="commits/wk" value={data.commits.total} />
-            <Stat label="open PRs" value={data.openPRs.total} />
-            <Stat label="open issues" value={data.openIssues.total} />
-          </div>
-
-          {/* Commits this week */}
+      {/* Two-column grid: commits left, PRs + Issues right */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '3fr 2fr',
+          gap: 14,
+          minHeight: 0,
+          flex: 1,
+        }}
+      >
+        <div style={{ overflowY: 'auto', minHeight: 0 }}>
           {data.commits.items.length > 0 && (
-            <Section title={`commits · ${data.commits.total}`}>
-              {data.commits.items.map((c) => (
-                <a key={c.sha} href={c.url} target="_blank" rel="noreferrer" style={linkStyle}>
-                  <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{c.sha}</span>
-                  {c.message}
-                  <span style={{ color: 'var(--text-dim)', marginLeft: 6 }}>· {ago(c.date)}</span>
-                </a>
-              ))}
+            <Section title={`commits this week · ${data.commits.total}`}>
+              <CommitsList items={data.commits.items} />
               {data.commits.total > data.commits.items.length && (
                 <MoreLink owner={config.owner} repo={config.repo} path="commits" />
               )}
             </Section>
           )}
+        </div>
 
-          {/* Open PRs */}
+        <div style={{ overflowY: 'auto', minHeight: 0 }}>
           {data.openPRs.items.length > 0 && (
-            <Section title={`PRs · ${data.openPRs.total}`}>
-              {data.openPRs.items.map((p) => (
-                <a key={p.number} href={p.url} target="_blank" rel="noreferrer" style={linkStyle}>
-                  <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>#{p.number}</span>
-                  {p.title}
-                </a>
-              ))}
+            <Section title={`open PRs · ${data.openPRs.total}`}>
+              <NumberedList items={data.openPRs.items} />
               {data.openPRs.total > data.openPRs.items.length && (
                 <MoreLink owner={config.owner} repo={config.repo} path="pulls" />
               )}
             </Section>
           )}
 
-          {/* Open issues */}
           {data.openIssues.items.length > 0 && (
-            <Section title={`issues · ${data.openIssues.total}`}>
-              {data.openIssues.items.map((i) => (
-                <a key={i.number} href={i.url} target="_blank" rel="noreferrer" style={linkStyle}>
-                  <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>#{i.number}</span>
-                  {i.title}
-                </a>
-              ))}
+            <Section title={`open issues · ${data.openIssues.total}`}>
+              <NumberedList items={data.openIssues.items} />
               {data.openIssues.total > data.openIssues.items.length && (
                 <MoreLink owner={config.owner} repo={config.repo} path="issues" />
               )}
             </Section>
           )}
-
-          {/* Project board */}
-          {data.project && (
-            <Section
-              title={
-                <a
-                  href={data.project.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: 'inherit' }}
-                >
-                  {data.project.title}
-                </a>
-              }
-            >
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-                {data.project.columns.map((col) => {
-                  const expanded = expandedColumn === col.name;
-                  return (
-                    <button
-                      key={col.name}
-                      onClick={() => setExpandedColumn(expanded ? null : col.name)}
-                      style={{
-                        boxShadow: expanded ? 'var(--inset)' : 'var(--raised-sm)',
-                        padding: '2px 8px',
-                        borderRadius: 6,
-                        fontSize: 10,
-                        color: expanded ? 'var(--accent)' : 'var(--text)',
-                      }}
-                    >
-                      {col.name} {col.total}
-                    </button>
-                  );
-                })}
-              </div>
-              {expandedColumn &&
-                data.project.columns
-                  .find((c) => c.name === expandedColumn)
-                  ?.items.map((item, idx) => (
-                    <div key={idx}>
-                      {item.url ? (
-                        <a href={item.url} target="_blank" rel="noreferrer" style={linkStyle}>
-                          {item.title}
-                        </a>
-                      ) : (
-                        <span style={{ ...linkStyle, color: 'var(--text-dim)' }}>{item.title}</span>
-                      )}
-                    </div>
-                  ))}
-              {expandedColumn &&
-                (() => {
-                  const col = data.project!.columns.find((c) => c.name === expandedColumn);
-                  if (!col || col.total <= col.items.length) return null;
-                  return (
-                    <a
-                      href={data.project!.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: 'var(--accent)', fontSize: 10 }}
-                    >
-                      +{col.total - col.items.length} more →
-                    </a>
-                  );
-                })()}
-            </Section>
-          )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+// ------------------------------------------------------------------
+// Shared building blocks
+// ------------------------------------------------------------------
+
+function Stat({ label, value, big = false }: { label: string; value: number; big?: boolean }) {
   return (
     <div
       style={{
         boxShadow: 'var(--inset)',
         borderRadius: 6,
-        padding: '4px 8px',
+        padding: big ? '10px 12px' : '4px 8px',
         textAlign: 'center',
       }}
     >
-      <div style={{ fontSize: 16, fontWeight: 500 }}>{value}</div>
-      <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{label}</div>
+      <div style={{ fontSize: big ? 22 : 16, fontWeight: 500 }}>{value}</div>
+      <div style={{ fontSize: big ? 10 : 9, color: 'var(--text-dim)' }}>{label}</div>
     </div>
   );
 }
@@ -280,5 +370,106 @@ function MoreLink({ owner, repo, path }: { owner: string; repo: string; path: st
     >
       + more →
     </a>
+  );
+}
+
+function CommitsList({ items }: { items: Stats['commits']['items'] }) {
+  return (
+    <>
+      {items.map((c) => (
+        <a key={c.sha} href={c.url} target="_blank" rel="noreferrer" style={linkStyle}>
+          <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{c.sha}</span>
+          {c.message}
+          <span style={{ color: 'var(--text-dim)', marginLeft: 6 }}>· {ago(c.date)}</span>
+        </a>
+      ))}
+    </>
+  );
+}
+
+function NumberedList({
+  items,
+}: {
+  items: Array<{ number: number; title: string; url: string }>;
+}) {
+  return (
+    <>
+      {items.map((it) => (
+        <a key={it.number} href={it.url} target="_blank" rel="noreferrer" style={linkStyle}>
+          <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>#{it.number}</span>
+          {it.title}
+        </a>
+      ))}
+    </>
+  );
+}
+
+function KanbanPills({
+  columns,
+  expanded,
+  onToggle,
+}: {
+  columns: NonNullable<Stats['project']>['columns'];
+  expanded: string | null;
+  onToggle: (name: string) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+      {columns.map((col) => {
+        const isExpanded = expanded === col.name;
+        return (
+          <button
+            key={col.name}
+            onClick={() => onToggle(col.name)}
+            style={{
+              boxShadow: isExpanded ? 'var(--inset)' : 'var(--raised-sm)',
+              padding: '3px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              color: isExpanded ? 'var(--accent)' : 'var(--text)',
+            }}
+          >
+            {col.name} {col.total}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function KanbanExpanded({
+  project,
+  expanded,
+}: {
+  project: NonNullable<Stats['project']>;
+  expanded: string | null;
+}) {
+  if (!expanded) return null;
+  const col = project.columns.find((c) => c.name === expanded);
+  if (!col) return null;
+  return (
+    <>
+      {col.items.map((item, idx) => (
+        <div key={idx}>
+          {item.url ? (
+            <a href={item.url} target="_blank" rel="noreferrer" style={linkStyle}>
+              {item.title}
+            </a>
+          ) : (
+            <span style={{ ...linkStyle, color: 'var(--text-dim)' }}>{item.title}</span>
+          )}
+        </div>
+      ))}
+      {col.total > col.items.length && (
+        <a
+          href={project.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: 'var(--accent)', fontSize: 10 }}
+        >
+          +{col.total - col.items.length} more →
+        </a>
+      )}
+    </>
   );
 }
