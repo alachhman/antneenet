@@ -41,12 +41,6 @@ function truncate(s: string, n: number): string {
   return s.slice(0, n).trimEnd() + '…';
 }
 
-function redditSnippet(selftext: string | undefined): string {
-  if (!selftext) return '';
-  if (selftext === '[deleted]' || selftext === '[removed]') return '';
-  return truncate(stripHtml(selftext), SNIPPET_MAX);
-}
-
 function rssSnippet(entry: any): string {
   // Try description, summary, content:encoded — in that priority.
   const raw =
@@ -84,44 +78,82 @@ async function fetchHN(): Promise<Item[]> {
 }
 
 async function fetchReddit(sub: string): Promise<Item[]> {
-  const r = await fetch(`https://www.reddit.com/r/${sub}/top.json?limit=15&t=day`, {
-    headers: { 'user-agent': 'antneenet-dashboard/0.1' },
-  });
-  if (!r.ok) return [];
-  const j = await r.json();
-  return (j.data?.children ?? []).map((c: any) => ({
-    title: c.data.title,
-    url: `https://reddit.com${c.data.permalink}`,
-    source: 'rdt' as const,
-    label: `r/${sub}`,
-    timestamp: (c.data.created_utc ?? 0) * 1000,
-    snippet: redditSnippet(c.data.selftext),
-  }));
-}
-
-async function fetchRSS(feed: string): Promise<Item[]> {
-  const r = await fetch(feed);
-  if (!r.ok) return [];
-  const text = await r.text();
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
-  const doc = parser.parse(text);
-  const entries = doc?.rss?.channel?.item ?? doc?.feed?.entry ?? [];
-  return (Array.isArray(entries) ? entries : [entries])
-    .slice(0, 15)
-    .map((e: any) => {
+  // Reddit's /*.json endpoint is blocked by their anti-bot CDN for Supabase
+  // Edge IPs. The RSS feed at /*.rss is still open and served as Atom XML.
+  try {
+    const r = await fetch(`https://www.reddit.com/r/${sub}/top.rss?t=day&limit=15`, {
+      headers: {
+        'user-agent': 'antneenet-dashboard/0.1',
+        accept: 'application/atom+xml, application/rss+xml, application/xml',
+      },
+    });
+    if (!r.ok) {
+      console.error(`[reddit] ${sub} fetch failed: ${r.status}`);
+      return [];
+    }
+    const text = await r.text();
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
+    const doc = parser.parse(text);
+    const entries = doc?.feed?.entry ?? doc?.rss?.channel?.item ?? [];
+    const list = Array.isArray(entries) ? entries : [entries];
+    return list.slice(0, 15).map((e: any) => {
+      // Atom: link is {@_href, @_rel}; RSS: link is a string.
+      const rawLink = e.link;
       const link =
-        typeof e.link === 'string' ? e.link : e.link?.['@_href'] ?? e.link?.[0]?.['@_href'];
-      const pub = e.pubDate ?? e.published ?? e.updated;
+        typeof rawLink === 'string'
+          ? rawLink
+          : Array.isArray(rawLink)
+          ? rawLink[0]?.['@_href']
+          : rawLink?.['@_href'];
+      const pub = e.updated ?? e.published ?? e.pubDate;
+      // Atom content is in e.content with @_type (text/html); RSS has e.description.
+      const rawContent = e.content?.['#text'] ?? e.content ?? e.description ?? e.summary ?? '';
       return {
         title: (e.title?.['#text'] ?? e.title) ?? '',
         url: link ?? '',
-        source: 'rss' as const,
-        label: 'rss',
+        source: 'rdt' as const,
+        label: `r/${sub}`,
         timestamp: pub ? Date.parse(pub) : 0,
-        snippet: rssSnippet(e),
+        snippet: truncate(stripHtml(String(rawContent)), SNIPPET_MAX),
       } satisfies Item;
-    })
-    .filter((i: Item) => i.title && i.url);
+    }).filter((i: Item) => i.title && i.url);
+  } catch (e) {
+    console.error(`[reddit] ${sub} exception:`, e);
+    return [];
+  }
+}
+
+async function fetchRSS(feed: string): Promise<Item[]> {
+  try {
+    const r = await fetch(feed);
+    if (!r.ok) {
+      console.error(`[rss] ${feed} fetch failed: ${r.status}`);
+      return [];
+    }
+    const text = await r.text();
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
+    const doc = parser.parse(text);
+    const entries = doc?.rss?.channel?.item ?? doc?.feed?.entry ?? [];
+    return (Array.isArray(entries) ? entries : [entries])
+      .slice(0, 15)
+      .map((e: any) => {
+        const link =
+          typeof e.link === 'string' ? e.link : e.link?.['@_href'] ?? e.link?.[0]?.['@_href'];
+        const pub = e.pubDate ?? e.published ?? e.updated;
+        return {
+          title: (e.title?.['#text'] ?? e.title) ?? '',
+          url: link ?? '',
+          source: 'rss' as const,
+          label: 'rss',
+          timestamp: pub ? Date.parse(pub) : 0,
+          snippet: rssSnippet(e),
+        } satisfies Item;
+      })
+      .filter((i: Item) => i.title && i.url);
+  } catch (e) {
+    console.error(`[rss] ${feed} exception:`, e);
+    return [];
+  }
 }
 
 Deno.serve(async (req) => {

@@ -8,9 +8,9 @@ export const techFeedDefinition: WidgetDefinition<TechFeedConfig> = {
   defaultConfig: {
     sources: [
       { type: 'hn', value: '' },
-      { type: 'reddit', value: 'programming' },
-      { type: 'reddit', value: 'rust' },
-      { type: 'rss', value: 'https://www.anthropic.com/news/rss.xml' },
+      { type: 'rss', value: 'https://techcrunch.com/feed/' },
+      { type: 'rss', value: 'https://github.blog/feed/' },
+      { type: 'rss', value: 'https://simonwillison.net/atom/everything/' },
     ],
   },
   defaultSize: { w: 4, h: 5 },
