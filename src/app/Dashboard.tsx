@@ -103,8 +103,18 @@ export function Dashboard() {
         breakpoints={BREAKPOINTS}
         cols={COLS}
         rowHeight={72}
-        margin={[20, 20]}
-        containerPadding={[24, 24]}
+        margin={{
+          lg: [20, 20],
+          md: [20, 20],
+          sm: [16, 16],
+          xs: [12, 12],
+        }}
+        containerPadding={{
+          lg: [24, 24],
+          md: [24, 24],
+          sm: [16, 16],
+          xs: [12, 12],
+        }}
         isDraggable={editMode}
         isResizable={editMode}
         onLayoutChange={handleLayoutChange}

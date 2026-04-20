@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Label, ScrollableArea } from '../../ui';
+import { useIsNarrow } from '../../lib/use-breakpoint';
 
 type FeedSource = { type: 'hn' | 'reddit' | 'rss'; value: string };
 type FeedCategory = { name: string; sources: FeedSource[] };
@@ -82,6 +83,7 @@ function badgeColors(label: string): { bg: string; fg: string } {
 export function View({ config }: { instanceId: string; config: TechFeedConfig }) {
   const categories = normalizeConfig(config);
   const [activeIdx, setActiveIdx] = useState(0);
+  const isNarrow = useIsNarrow();
   const safeIdx = Math.min(activeIdx, Math.max(0, categories.length - 1));
   const activeCategory = categories[safeIdx];
 
@@ -171,7 +173,7 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
               style={{
                 display: 'block',
                 padding: '10px 0',
-                fontSize: 12,
+                fontSize: isNarrow ? 13 : 12,
                 borderTop: '1px solid var(--divider)',
                 color: 'var(--text)',
               }}
@@ -181,7 +183,7 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
                   title={i.label}
                   style={{
                     display: 'inline-block',
-                    width: 110,
+                    width: isNarrow ? 90 : 110,
                     padding: '2px 8px',
                     marginRight: 8,
                     borderRadius: 5,
@@ -207,7 +209,7 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
                 <div
                   style={{
                     marginTop: 5,
-                    fontSize: 11,
+                    fontSize: isNarrow ? 12 : 11,
                     color: 'var(--text-dim)',
                     lineHeight: 1.45,
                     display: '-webkit-box',

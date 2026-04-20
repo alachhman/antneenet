@@ -19,3 +19,7 @@ input, textarea { font: inherit; color: inherit; background: transparent; border
   70%  { transform: scale(1.12); }
   100% { transform: scale(1); }
 }
+
+/* Utility: horizontally scrolling strip with no visible scrollbar
+   (WebKit). Firefox uses scrollbar-width: none in the inline style. */
+.no-scrollbar::-webkit-scrollbar { display: none; }

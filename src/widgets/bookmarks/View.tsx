@@ -1,4 +1,5 @@
 import { Label, Inset } from '../../ui';
+import { useIsNarrow } from '../../lib/use-breakpoint';
 
 export type BookmarksConfig = { items: Array<{ name: string; url: string }> };
 
@@ -12,6 +13,7 @@ function faviconFor(url: string) {
 }
 
 export function View({ config }: { instanceId: string; config: BookmarksConfig }) {
+  const isNarrow = useIsNarrow();
   if (!config.items.length) {
     return (
       <div>
@@ -28,7 +30,9 @@ export function View({ config }: { instanceId: string; config: BookmarksConfig }
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
+          gridTemplateColumns: isNarrow
+            ? 'repeat(3, 1fr)'
+            : 'repeat(auto-fill, minmax(72px, 1fr))',
           gap: 8,
         }}
       >
@@ -40,17 +44,17 @@ export function View({ config }: { instanceId: string; config: BookmarksConfig }
             rel="noreferrer"
             style={{ textDecoration: 'none' }}
           >
-            <Inset style={{ textAlign: 'center', padding: '10px 6px' }}>
+            <Inset style={{ textAlign: 'center', padding: isNarrow ? '12px 6px' : '10px 6px' }}>
               <img
                 src={faviconFor(b.url) ?? ''}
                 alt={b.name}
-                width={20}
-                height={20}
+                width={isNarrow ? 24 : 20}
+                height={isNarrow ? 24 : 20}
                 style={{ display: 'block', margin: '0 auto 6px' }}
               />
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: isNarrow ? 12 : 11,
                   color: 'var(--text)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

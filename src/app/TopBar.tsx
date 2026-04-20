@@ -2,10 +2,12 @@ import { Inset } from '../ui';
 import { useEditMode } from './store';
 import { logout } from '../lib/auth';
 import { useNavigate } from 'react-router-dom';
+import { useIsNarrow } from '../lib/use-breakpoint';
 
 export function TopBar() {
   const { editMode, toggle } = useEditMode();
   const navigate = useNavigate();
+  const isNarrow = useIsNarrow();
 
   async function onLogout() {
     await logout();
@@ -13,14 +15,27 @@ export function TopBar() {
   }
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: 'var(--space-3) var(--space-4)', gap: 'var(--space-4)',
-    }}>
-      <div style={{ fontSize: 18, fontWeight: 600 }}>Dashboard</div>
-      <Inset style={{ flex: 1, maxWidth: 360, color: 'var(--text-dim)' }}>
-        <span style={{ fontSize: 11 }}>⌕ search ⌘K</span>
-      </Inset>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: isNarrow
+          ? 'var(--space-2) var(--space-3)'
+          : 'var(--space-3) var(--space-4)',
+        gap: isNarrow ? 'var(--space-2)' : 'var(--space-4)',
+      }}
+    >
+      <div style={{ fontSize: isNarrow ? 16 : 18, fontWeight: 600 }}>Dashboard</div>
+
+      {/* Search bar is decorative for now — hide on mobile where horizontal
+          space matters more than the affordance. */}
+      {!isNarrow && (
+        <Inset style={{ flex: 1, maxWidth: 360, color: 'var(--text-dim)' }}>
+          <span style={{ fontSize: 11 }}>⌕ search ⌘K</span>
+        </Inset>
+      )}
+
       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
         <button
           onClick={toggle}

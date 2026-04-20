@@ -235,8 +235,8 @@ function HabitCard({
         key={done ? 'on' : 'off'}
         aria-hidden
         style={{
-          width: 28,
-          height: 28,
+          width: 32,
+          height: 32,
           borderRadius: '50%',
           background: done ? 'var(--accent)' : 'transparent',
           border: done ? '2px solid var(--accent)' : '2px solid var(--text-dim)',
@@ -252,8 +252,8 @@ function HabitCard({
       >
         {done && (
           <svg
-            width="15"
-            height="15"
+            width="17"
+            height="17"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#fff"

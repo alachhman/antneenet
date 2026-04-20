@@ -621,7 +621,21 @@ function KanbanPills({
   onToggle: (name: string) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div
+      className="no-scrollbar"
+      style={{
+        display: 'flex',
+        gap: 6,
+        // Horizontal scroll instead of wrapping so the pill row never
+        // becomes 3 stacked rows on mobile. Hide the scrollbar for a
+        // cleaner look; users can flick or trackpad-scroll.
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        paddingBottom: 2,
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+      }}
+    >
       {columns.map((col) => {
         const isExpanded = expanded === col.name;
         return (
@@ -634,6 +648,8 @@ function KanbanPills({
               borderRadius: 8,
               fontSize: 11,
               color: isExpanded ? 'var(--accent)' : 'var(--text)',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
             }}
           >
             {col.name} {col.total}
@@ -775,11 +791,13 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
     >
       {header}
 
-      {/* Stats + project tile — 3 of 4 double as the active-tab selector. */}
+      {/* Stats + project tile — 3 of 4 double as the active-tab selector.
+          Always 4 columns so all stats are visible at a glance, even on
+          phones (tiles just get narrower). */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${isDesktop ? 4 : 2}, 1fr)`,
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 12,
           marginBottom: 16,
         }}
