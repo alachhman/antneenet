@@ -37,6 +37,33 @@ function ago(ts: number) {
   return `${Math.floor(s / 86400)}d`;
 }
 
+// Palette of source-badge colors. Stored as [r, g, b] so we can derive a
+// matching tinted background + full-opacity foreground from a single tuple.
+const BADGE_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [20, 184, 166],   // teal
+  [249, 115, 22],   // orange
+  [225, 29, 72],    // rose
+  [139, 92, 246],   // violet
+  [37, 99, 235],    // blue
+  [22, 163, 74],    // green
+  [219, 39, 119],   // pink
+  [8, 145, 178],    // cyan
+  [217, 119, 6],    // amber
+  [79, 70, 229],    // indigo
+];
+
+// Stable string → palette index. Same label always picks the same color.
+function hashIndex(s: string, mod: number): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h) % mod;
+}
+
+function badgeColors(label: string): { bg: string; fg: string } {
+  const [r, g, b] = BADGE_PALETTE[hashIndex(label, BADGE_PALETTE.length)];
+  return { bg: `rgba(${r}, ${g}, ${b}, 0.14)`, fg: `rgb(${r}, ${g}, ${b})` };
+}
+
 export function View({ config }: { instanceId: string; config: TechFeedConfig }) {
   const { data = [], isLoading } = useQuery({
     queryKey: ['tech-feed', JSON.stringify(config.sources)],
@@ -50,58 +77,68 @@ export function View({ config }: { instanceId: string; config: TechFeedConfig })
     <div style={{ overflowY: 'auto', height: '100%' }}>
       <Label>Tech Feed · {data.length}</Label>
       {isLoading && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Loading…</div>}
-      {data.map((i, idx) => (
-        <a
-          key={idx}
-          href={i.url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: 'block',
-            padding: '6px 0',
-            fontSize: 11,
-            borderTop: '1px solid var(--divider)',
-            color: 'var(--text)',
-          }}
-        >
-          <div>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '1px 6px',
-                marginRight: 6,
-                borderRadius: 4,
-                background: 'rgba(20, 184, 166, 0.14)',
-                color: 'var(--accent)',
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.2px',
-                verticalAlign: '1px',
-              }}
-            >
-              {i.label}
-            </span>
-            <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
-            {i.title}
-          </div>
-          {i.snippet && (
-            <div
-              style={{
-                marginTop: 3,
-                fontSize: 10,
-                color: 'var(--text-dim)',
-                lineHeight: 1.4,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {i.snippet}
+      {data.map((i, idx) => {
+        const colors = badgeColors(i.label);
+        return (
+          <a
+            key={idx}
+            href={i.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'block',
+              padding: '6px 0',
+              fontSize: 11,
+              borderTop: '1px solid var(--divider)',
+              color: 'var(--text)',
+            }}
+          >
+            <div>
+              <span
+                title={i.label}
+                style={{
+                  display: 'inline-block',
+                  width: 100,
+                  padding: '1px 6px',
+                  marginRight: 6,
+                  borderRadius: 4,
+                  background: colors.bg,
+                  color: colors.fg,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: '0.2px',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  verticalAlign: '1px',
+                  boxSizing: 'border-box',
+                }}
+              >
+                {i.label}
+              </span>
+              <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
+              {i.title}
             </div>
-          )}
-        </a>
-      ))}
+            {i.snippet && (
+              <div
+                style={{
+                  marginTop: 3,
+                  fontSize: 10,
+                  color: 'var(--text-dim)',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {i.snippet}
+              </div>
+            )}
+          </a>
+        );
+      })}
     </div>
   );
 }

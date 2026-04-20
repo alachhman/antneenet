@@ -10,7 +10,7 @@ export const techFeedDefinition: WidgetDefinition<TechFeedConfig> = {
       { type: 'hn', value: '' },
       { type: 'rss', value: 'https://techcrunch.com/feed/' },
       { type: 'rss', value: 'https://github.blog/feed/' },
-      { type: 'rss', value: 'https://simonwillison.net/atom/everything/' },
+      { type: 'rss', value: 'https://arstechnica.com/feed/' },
     ],
   },
   defaultSize: { w: 4, h: 5 },

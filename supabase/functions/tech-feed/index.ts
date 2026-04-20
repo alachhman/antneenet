@@ -29,10 +29,15 @@ function stripHtml(s: string): string {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCharCode(parseInt(n, 16)))
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function cleanTitle(s: string): string {
+  // Titles rarely contain HTML tags, but sometimes have entities (e.g. &#039;).
+  return stripHtml(String(s ?? ''));
 }
 
 function truncate(s: string, n: number): string {
@@ -109,7 +114,7 @@ async function fetchReddit(sub: string): Promise<Item[]> {
       // Atom content is in e.content with @_type (text/html); RSS has e.description.
       const rawContent = e.content?.['#text'] ?? e.content ?? e.description ?? e.summary ?? '';
       return {
-        title: (e.title?.['#text'] ?? e.title) ?? '',
+        title: cleanTitle(e.title?.['#text'] ?? e.title),
         url: link ?? '',
         source: 'rdt' as const,
         label: `r/${sub}`,
@@ -154,7 +159,7 @@ async function fetchRSS(feed: string): Promise<Item[]> {
           typeof e.link === 'string' ? e.link : e.link?.['@_href'] ?? e.link?.[0]?.['@_href'];
         const pub = e.pubDate ?? e.published ?? e.updated;
         return {
-          title: (e.title?.['#text'] ?? e.title) ?? '',
+          title: cleanTitle(e.title?.['#text'] ?? e.title),
           url: link ?? '',
           source: 'rss' as const,
           label,
