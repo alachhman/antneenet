@@ -134,6 +134,27 @@ export function useUpdateWidgetConfig() {
         .eq('id', args.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['widget_instances'] }),
+    // Apply the new config to the local cache before the round-trip so the
+    // dashboard widget reflects edits instantly. Roll back on error; refetch
+    // on settle to reconcile with the server's canonical state.
+    onMutate: async (args) => {
+      await qc.cancelQueries({ queryKey: ['widget_instances'] });
+      const previous = qc.getQueryData<WidgetInstance[]>(['widget_instances']);
+      if (previous) {
+        qc.setQueryData<WidgetInstance[]>(
+          ['widget_instances'],
+          previous.map((w) =>
+            w.id === args.id ? { ...w, config: args.config } : w,
+          ),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _args, context) => {
+      if (context && 'previous' in context && context.previous) {
+        qc.setQueryData(['widget_instances'], context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['widget_instances'] }),
   });
 }
