@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn(), auth: {} } }));
+vi.mock('./supabase', () => ({ supabase: { from: vi.fn(), auth: {} } }));
+
 import { registry, getDefinition, listWidgetTypes } from './widget-registry';
 
 describe('widget registry', () => {
