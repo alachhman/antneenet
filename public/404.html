@@ -1,0 +1,9 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Redirecting…</title>
+<script>
+  // Redirect to the SPA root, preserving the path after the base.
+  const base = '/antneenet/';
+  const rest = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
+  location.replace(base + '?redirect=' + encodeURIComponent(rest + location.search + location.hash));
+</script>
