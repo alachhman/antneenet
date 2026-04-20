@@ -117,7 +117,16 @@ export function Dashboard() {
           return (
             <div key={inst.id}>
               <WidgetCard instanceId={inst.id} onGear={() => setSettingsFor(inst.id)}>
-                <div className="drag-handle" style={{ height: 18, cursor: editMode ? 'move' : 'default' }} />
+                {/* Drag handle only takes visible space in edit mode; out of
+                    edit mode it has zero height so widgets sit flush with
+                    the card's top padding. */}
+                <div
+                  className="drag-handle"
+                  style={{
+                    height: editMode ? 18 : 0,
+                    cursor: editMode ? 'move' : 'default',
+                  }}
+                />
                 <View instanceId={inst.id} config={inst.config} />
               </WidgetCard>
             </div>

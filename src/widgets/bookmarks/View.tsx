@@ -25,12 +25,40 @@ export function View({ config }: { instanceId: string; config: BookmarksConfig }
   return (
     <div>
       <Label>Bookmarks</Label>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
+          gap: 8,
+        }}
+      >
         {config.items.map((b, i) => (
-          <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-            <Inset style={{ textAlign: 'center', padding: 8 }}>
-              <img src={faviconFor(b.url) ?? ''} alt={b.name} width={18} height={18} style={{ display: 'block', margin: '0 auto 4px' }} />
-              <div style={{ fontSize: 10, color: 'var(--text)' }}>{b.name}</div>
+          <a
+            key={i}
+            href={b.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ textDecoration: 'none' }}
+          >
+            <Inset style={{ textAlign: 'center', padding: '10px 6px' }}>
+              <img
+                src={faviconFor(b.url) ?? ''}
+                alt={b.name}
+                width={20}
+                height={20}
+                style={{ display: 'block', margin: '0 auto 6px' }}
+              />
+              <div
+                style={{
+                  fontSize: 11,
+                  color: 'var(--text)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {b.name}
+              </div>
             </Inset>
           </a>
         ))}
