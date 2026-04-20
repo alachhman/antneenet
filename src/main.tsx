@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { queryClient } from './lib/query-client';
 import './styles/tokens.css';
 import './styles/global.css';
+import './styles/grid.css';
 import App from './App.tsx';
 
 const basename = import.meta.env.BASE_URL;
