@@ -9,15 +9,17 @@
   --divider: rgba(30, 41, 59, 0.08);  /* slate-800 at low opacity */
   --overlay: rgba(15, 23, 42, 0.35);  /* modal dim */
 
-  /* neumorphic shadows derived from --bg */
-  --shadow-dark: #c7cdd4;      /* soft gray shadow */
-  --shadow-light: #ffffff;     /* white highlight */
+  /* Neumorphic shadows. Alpha-based so stacked elements (list items,
+     adjacent cards) composite smoothly instead of drawing opaque blocks
+     that step over each other's shadows. */
+  --shadow-dark: rgba(51, 65, 85, 0.20);    /* slate-700 at ~20% alpha */
+  --shadow-light: rgba(255, 255, 255, 0.95);
   --raised:
     6px 6px 14px var(--shadow-dark),
     -6px -6px 14px var(--shadow-light);
   --raised-sm:
-    3px 3px 8px var(--shadow-dark),
-    -3px -3px 8px var(--shadow-light);
+    2px 2px 6px var(--shadow-dark),
+    -2px -2px 6px var(--shadow-light);
   --inset:
     inset 3px 3px 6px var(--shadow-dark),
     inset -3px -3px 6px var(--shadow-light);
