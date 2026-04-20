@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders() });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
   // Load recent attempts for this IP
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     .single();
   if (authErr || !authRow) return json({ error: 'auth not configured' }, 500);
 
-  const match = await bcrypt.compare(password, authRow.password_hash);
+  const match = bcrypt.compareSync(password, authRow.password_hash);
   if (!match) {
     await admin.from('login_attempts').insert({ ip });
     return json({ error: 'invalid password' }, 401);
