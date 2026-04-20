@@ -1,4 +1,4 @@
-import { Label } from '../../ui';
+import { Label, ScrollableArea } from '../../ui';
 import type { Habit, HabitCheckin } from '../../lib/database-types';
 import { useHabits, useCheckins, useToggleCheckin, todayISO } from './queries';
 
@@ -61,7 +61,7 @@ export function View(_: { instanceId: string; config: HabitsConfig }) {
     habits.length === 0 ? 0 : Math.round((doneToday.size / habits.length) * 100);
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Label>
         Habits · {doneToday.size}/{habits.length} today
       </Label>
@@ -86,31 +86,33 @@ export function View(_: { instanceId: string; config: HabitsConfig }) {
         />
       </div>
 
-      {habits.length === 0 && (
+      {habits.length === 0 ? (
         <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
           Enter edit mode → gear icon to add habits.
         </div>
+      ) : (
+        <ScrollableArea>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {habits.map((h) => {
+              const done = doneToday.has(h.id);
+              const streak = computeStreak(h.id, checkins, today);
+              return (
+                <HabitCard
+                  key={h.id}
+                  habit={h}
+                  done={done}
+                  streak={streak}
+                  checkins={checkins}
+                  today={today}
+                  onToggle={() =>
+                    toggle.mutate({ habitId: h.id, date: today, on: !done })
+                  }
+                />
+              );
+            })}
+          </div>
+        </ScrollableArea>
       )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {habits.map((h) => {
-          const done = doneToday.has(h.id);
-          const streak = computeStreak(h.id, checkins, today);
-          return (
-            <HabitCard
-              key={h.id}
-              habit={h}
-              done={done}
-              streak={streak}
-              checkins={checkins}
-              today={today}
-              onToggle={() =>
-                toggle.mutate({ habitId: h.id, date: today, on: !done })
-              }
-            />
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -145,8 +147,8 @@ function HabitCard({
       aria-pressed={done}
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
+        alignItems: 'center',
+        gap: 12,
         width: '100%',
         textAlign: 'left',
         boxShadow: 'var(--raised-sm)',
@@ -155,85 +157,114 @@ function HabitCard({
         transition: 'box-shadow 0.15s ease',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span
-          style={{
-            flex: 1,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {habit.name}
-        </span>
-
-        {streak >= 2 && (
+      {/* Left column: name + streak, week strip below. */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: streakColor(streak),
-              flexShrink: 0,
+              flex: 1,
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--text)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
-            🔥 {streak}
+            {habit.name}
           </span>
-        )}
 
-        {/* Key flip on `done` forces a remount → CSS animation restarts. */}
-        <span
-          key={done ? 'on' : 'off'}
-          aria-hidden
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: '50%',
-            background: done ? 'var(--accent)' : 'transparent',
-            border: done ? '2px solid var(--accent)' : '2px solid var(--text-dim)',
-            boxShadow: done
-              ? '0 0 0 3px rgba(20, 184, 166, 0.15)'
-              : 'none',
-            flexShrink: 0,
-            animation: 'habit-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
-          }}
-        />
-      </div>
-
-      {/* 7-day strip. Oldest on left, today on right (with a ring). */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        {week.map((date) => {
-          const isToday = date === today;
-          const filled = habitDates.has(date);
-          return (
+          {streak >= 2 && (
             <span
-              // Only the today-dot needs to re-animate on toggle, so we
-              // key that one by `done`; others keep their identity.
-              key={isToday ? `today-${done ? 'on' : 'off'}` : date}
-              aria-hidden
-              title={date}
               style={{
-                width: 9,
-                height: 9,
-                borderRadius: '50%',
-                background: filled ? 'var(--accent)' : 'transparent',
-                border: filled
-                  ? '1px solid var(--accent)'
-                  : '1px solid var(--text-dim)',
-                opacity: filled ? 1 : 0.45,
-                boxShadow: isToday ? '0 0 0 2px rgba(20, 184, 166, 0.25)' : 'none',
-                transition: 'background 0.2s ease, opacity 0.2s ease',
-                animation: isToday
-                  ? 'habit-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                  : undefined,
+                fontSize: 11,
+                fontWeight: 600,
+                color: streakColor(streak),
+                flexShrink: 0,
               }}
-            />
-          );
-        })}
+            >
+              🔥 {streak}
+            </span>
+          )}
+        </div>
+
+        {/* 7-day strip. Oldest on left, today on right (with a ring). */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {week.map((date) => {
+            const isToday = date === today;
+            const filled = habitDates.has(date);
+            return (
+              <span
+                // Only the today-dot needs to re-animate on toggle, so we
+                // key that one by `done`; others keep their identity.
+                key={isToday ? `today-${done ? 'on' : 'off'}` : date}
+                aria-hidden
+                title={date}
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: '50%',
+                  background: filled ? 'var(--accent)' : 'transparent',
+                  border: filled
+                    ? '1px solid var(--accent)'
+                    : '1px solid var(--text-dim)',
+                  opacity: filled ? 1 : 0.45,
+                  boxShadow: isToday ? '0 0 0 2px rgba(20, 184, 166, 0.25)' : 'none',
+                  transition: 'background 0.2s ease, opacity 0.2s ease',
+                  animation: isToday
+                    ? 'habit-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    : undefined,
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
+
+      {/* Check circle — vertically centered across both rows via parent flex.
+          Key flip on `done` forces a remount so the CSS animation restarts. */}
+      <span
+        key={done ? 'on' : 'off'}
+        aria-hidden
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: done ? 'var(--accent)' : 'transparent',
+          border: done ? '2px solid var(--accent)' : '2px solid var(--text-dim)',
+          boxShadow: done ? '0 0 0 3px rgba(20, 184, 166, 0.15)' : 'none',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'habit-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transition:
+            'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+        }}
+      >
+        {done && (
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            strokeWidth={3.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="5 12 10 17 19 7" />
+          </svg>
+        )}
+      </span>
     </button>
   );
 }
