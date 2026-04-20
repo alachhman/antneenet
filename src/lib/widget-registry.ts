@@ -3,11 +3,13 @@ import type { AnyWidgetDefinition } from './widget-types';
 import { demoDefinition } from '../widgets/demo';
 import { bookmarksDefinition } from '../widgets/bookmarks';
 import { habitsDefinition } from '../widgets/habits';
+import { weatherDefinition } from '../widgets/weather';
 
 export const registry: Record<WidgetType, AnyWidgetDefinition> = {
   demo: demoDefinition,
   bookmarks: bookmarksDefinition,
   habits: habitsDefinition,
+  weather: weatherDefinition,
 } as Record<WidgetType, AnyWidgetDefinition>;
 
 export function getDefinition(type: WidgetType): AnyWidgetDefinition | undefined {
