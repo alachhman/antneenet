@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import type { LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
 import { TopBar } from './TopBar';
@@ -40,6 +40,17 @@ export function Dashboard() {
     if (hasContent) return storedLayouts as LayoutsByBreakpoint;
     return defaultLayoutsFor(instances, defaultSizes);
   }, [storedLayouts, instances, defaultSizes]);
+
+  // WidthProvider snapshots container width on mount. Under React 19 strict
+  // mode double-invocation (and sometimes after auth redirects) it can latch
+  // onto a pre-layout width (~150px) and leave the grid squished until the
+  // window is actually resized. Firing a single resize on mount + whenever
+  // instances arrive forces a re-measure against the real container.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raf = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    return () => cancelAnimationFrame(raf);
+  }, [instances.length]);
 
   function handleLayoutChange(_cur: readonly LayoutItem[], all: ResponsiveLayouts) {
     if (!editMode) return;
@@ -83,6 +94,7 @@ export function Dashboard() {
         isResizable={editMode}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
+        measureBeforeMount
       >
         {instances.map((inst) => {
           const def = getDefinition(inst.widget_type);
