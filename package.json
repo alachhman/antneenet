@@ -13,7 +13,8 @@
     "test:ui": "vitest --ui",
     "typecheck": "tsc --noEmit",
     "db:push": "supabase db push",
-    "db:seed": "tsx supabase/scripts/seed.ts"
+    "db:seed": "tsx supabase/scripts/seed.ts",
+    "fn:deploy": "supabase functions deploy login weather stocks tech-feed"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
