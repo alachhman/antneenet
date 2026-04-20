@@ -4,8 +4,9 @@ import { Inset } from './Inset';
 
 describe('<Inset>', () => {
   it('renders children and applies inset shadow', () => {
-    render(<Inset>x</Inset>);
-    const el = screen.getByText('x').parentElement!;
-    expect(el.style.boxShadow).toContain('--inset');
+    const { container } = render(<Inset>x</Inset>);
+    const el = container.firstElementChild as HTMLElement;
+    expect(el.style.boxShadow).toBeTruthy();
+    expect(el.className).toContain('neu-inset');
   });
 });

@@ -8,6 +8,7 @@ export function Inset({
 }: PropsWithChildren<HTMLAttributes<HTMLDivElement>>) {
   return (
     <div
+      {...rest}
       className={`neu-inset ${className}`.trim()}
       style={{
         background: 'var(--bg)',
@@ -17,9 +18,7 @@ export function Inset({
         ...style,
       }}
     >
-      <div {...rest}>
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
