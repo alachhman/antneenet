@@ -13,6 +13,7 @@ async function fetchFeed(sources: FeedSource[]): Promise<Item[]> {
     headers: {
       'content-type': 'application/json',
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
     },
     body: JSON.stringify({ sources }),
   });

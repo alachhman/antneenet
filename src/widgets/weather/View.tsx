@@ -11,7 +11,10 @@ export type WeatherConfig = {
 async function fetchWeather(cfg: WeatherConfig) {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather?lat=${cfg.lat}&lon=${cfg.lon}&units=${cfg.units}`;
   const r = await fetch(url, {
-    headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string },
+    headers: {
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
+    },
   });
   if (!r.ok) throw new Error('weather failed');
   return r.json();

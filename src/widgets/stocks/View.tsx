@@ -13,7 +13,12 @@ function isMarketHours(d = new Date()) {
 
 async function fetchQuotes(tickers: string[]) {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stocks?symbols=${tickers.join(',')}`;
-  const r = await fetch(url, { headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string } });
+  const r = await fetch(url, {
+    headers: {
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
+    },
+  });
   if (!r.ok) throw new Error('stocks failed');
   const j = await r.json();
   return j.quotes as Array<{ symbol: string; price: number; changePct: number }>;

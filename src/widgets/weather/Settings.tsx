@@ -6,7 +6,10 @@ type GeoResult = { name: string; state?: string; country: string; lat: number; l
 async function geocode(q: string): Promise<GeoResult[]> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather?mode=geocode&q=${encodeURIComponent(q)}`;
   const r = await fetch(url, {
-    headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string },
+    headers: {
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
+    },
   });
   if (!r.ok) return [];
   return r.json();
