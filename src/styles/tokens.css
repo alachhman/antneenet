@@ -1,0 +1,33 @@
+:root {
+  /* palette: deep navy + cyan */
+  --bg: #1a2332;
+  --accent: #22d3ee;
+  --text: #cbd5e1;
+  --text-dim: #64748b;
+  --up: #34d399;
+  --down: #fb7185;
+
+  /* neumorphic shadows derived from --bg */
+  --shadow-dark: #0f1826;
+  --shadow-light: #253041;
+  --raised:
+    6px 6px 14px var(--shadow-dark),
+    -6px -6px 14px var(--shadow-light);
+  --raised-sm:
+    3px 3px 8px var(--shadow-dark),
+    -3px -3px 8px var(--shadow-light);
+  --inset:
+    inset 3px 3px 6px var(--shadow-dark),
+    inset -3px -3px 6px var(--shadow-light);
+
+  /* type + spacing */
+  --font-sans: -apple-system, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --radius-card: 12px;
+  --radius-inset: 8px;
+}
