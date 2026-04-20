@@ -1,10 +1,11 @@
 import type { WidgetType } from './database-types';
 import type { AnyWidgetDefinition } from './widget-types';
 import { demoDefinition } from '../widgets/demo';
+import { bookmarksDefinition } from '../widgets/bookmarks';
 
 export const registry: Record<WidgetType, AnyWidgetDefinition> = {
-  // MVP widgets are added in Phase 6.
   demo: demoDefinition,
+  bookmarks: bookmarksDefinition,
 } as Record<WidgetType, AnyWidgetDefinition>;
 
 export function getDefinition(type: WidgetType): AnyWidgetDefinition | undefined {
