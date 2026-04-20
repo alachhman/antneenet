@@ -52,6 +52,17 @@ type Issue = {
   assignees: Array<{ login: string; avatarUrl: string }>;
 };
 
+type ProjectItem = {
+  kind: 'issue' | 'pr' | 'draft';
+  title: string;
+  url: string | null;
+  number: number | null;
+  state: string | null;
+  isDraft: boolean;
+  author: { login: string; avatarUrl: string } | null;
+  labels: GhLabel[];
+};
+
 type Stats = {
   owner: string;
   repo: string;
@@ -61,7 +72,7 @@ type Stats = {
   project: {
     title: string;
     url: string;
-    columns: Array<{ name: string; total: number; items: Array<{ title: string; url: string | null }> }>;
+    columns: Array<{ name: string; total: number; items: ProjectItem[] }>;
   } | null;
 };
 
@@ -254,7 +265,6 @@ const cardLinkStyle: React.CSSProperties = {
   boxShadow: 'var(--raised-sm)',
   borderRadius: 'var(--radius-inset)',
   padding: '10px 12px',
-  marginBottom: 8,
   color: 'var(--text)',
   transition: 'box-shadow 0.15s ease',
 };
@@ -301,9 +311,11 @@ function CommitCard({ commit }: { commit: Commit }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
+          rowGap: 4,
           fontSize: 10,
           color: 'var(--text-dim)',
+          flexWrap: 'wrap',
         }}
       >
         <Avatar src={commit.author.avatarUrl} alt={commit.author.name ?? 'author'} size={16} />
@@ -417,6 +429,113 @@ function PRCard({ pr }: { pr: PR }) {
   );
 }
 
+function ProjectItemCard({ item }: { item: ProjectItem }) {
+  const kindBadgeBg =
+    item.kind === 'pr'
+      ? 'rgba(139, 92, 246, 0.18)' // violet
+      : item.kind === 'issue'
+      ? 'rgba(20, 184, 166, 0.18)' // teal
+      : 'rgba(100, 116, 139, 0.18)'; // slate
+  const kindBadgeFg =
+    item.kind === 'pr'
+      ? '#7c3aed'
+      : item.kind === 'issue'
+      ? '#0d9488'
+      : 'var(--text-dim)';
+  const kindLabel = item.kind === 'pr' ? 'PR' : item.kind === 'issue' ? 'Issue' : 'Draft';
+
+  const inner = (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: item.labels.length > 0 ? 6 : 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 600,
+            background: kindBadgeBg,
+            color: kindBadgeFg,
+            padding: '1px 6px',
+            borderRadius: 4,
+            flexShrink: 0,
+            letterSpacing: '0.2px',
+          }}
+        >
+          {kindLabel}
+        </span>
+        {item.isDraft && (
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 600,
+              background: 'var(--shadow-dark)',
+              color: 'var(--text-dim)',
+              padding: '1px 6px',
+              borderRadius: 4,
+              flexShrink: 0,
+            }}
+          >
+            DRAFT
+          </span>
+        )}
+        {item.number !== null && (
+          <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>
+            #{item.number}
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {item.title}
+        </span>
+      </div>
+      {item.labels.length > 0 && (
+        <div style={{ marginBottom: item.author ? 6 : 0 }}>
+          {item.labels.map((l) => (
+            <LabelPill key={l.name} label={l} />
+          ))}
+        </div>
+      )}
+      {item.author && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 10,
+            color: 'var(--text-dim)',
+          }}
+        >
+          <Avatar src={item.author.avatarUrl} alt={item.author.login} size={14} />
+          <span>{item.author.login}</span>
+        </div>
+      )}
+    </>
+  );
+
+  if (item.url) {
+    return (
+      <a href={item.url} target="_blank" rel="noreferrer" style={cardLinkStyle}>
+        {inner}
+      </a>
+    );
+  }
+  return <div style={cardLinkStyle}>{inner}</div>;
+}
+
 function IssueCard({ issue }: { issue: Issue }) {
   return (
     <a href={issue.url} target="_blank" rel="noreferrer" style={cardLinkStyle}>
@@ -525,47 +644,55 @@ function KanbanPills({
 function KanbanExpanded({
   project,
   expanded,
+  isDesktop,
 }: {
   project: NonNullable<Stats['project']>;
   expanded: string | null;
+  isDesktop: boolean;
 }) {
   if (!expanded) return null;
   const col = project.columns.find((c) => c.name === expanded);
   if (!col) return null;
   return (
-    <div style={{ marginTop: 6 }}>
-      {col.items.map((item, idx) => (
-        <div key={idx} style={{ fontSize: 11 }}>
-          {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: 'var(--text)',
-                display: 'block',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {item.title}
-            </a>
-          ) : (
-            <span style={{ color: 'var(--text-dim)' }}>{item.title}</span>
-          )}
-        </div>
-      ))}
+    <div style={{ marginTop: 8 }}>
+      <CardGrid isDesktop={isDesktop}>
+        {col.items.map((item, idx) => (
+          <ProjectItemCard key={idx} item={item} />
+        ))}
+      </CardGrid>
       {col.total > col.items.length && (
         <a
           href={project.url}
           target="_blank"
           rel="noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 10 }}
+          style={{ color: 'var(--accent)', fontSize: 10, display: 'block', textAlign: 'center', padding: '4px 0' }}
         >
-          +{col.total - col.items.length} more →
+          +{col.total - col.items.length} more on GitHub →
         </a>
       )}
+    </div>
+  );
+}
+
+// Responsive tile grid. Desktop lays cards out in auto-fill columns
+// (≥260px each), mobile stacks them in a single column.
+function CardGrid({
+  children,
+  isDesktop,
+}: {
+  children: React.ReactNode;
+  isDesktop: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr',
+        gap: 8,
+        alignItems: 'start',
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -576,7 +703,7 @@ function KanbanExpanded({
 
 export function View({ config }: { instanceId: string; config: GithubConfig }) {
   const isDesktop = useIsDesktop();
-  const [tab, setTab] = useState<Tab>('commits');
+  const [tab, setTab] = useState<Tab>('prs');
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ['github-stats', config.owner, config.repo, config.projectNumber],
@@ -691,17 +818,23 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
             expanded={expandedColumn}
             onToggle={(name) => setExpandedColumn(expandedColumn === name ? null : name)}
           />
-          <KanbanExpanded project={data.project} expanded={expandedColumn} />
+          <KanbanExpanded
+            project={data.project}
+            expanded={expandedColumn}
+            isDesktop={isDesktop}
+          />
         </div>
       )}
 
-      {/* Active tab content — rich cards */}
+      {/* Active tab content — rich cards, tiled on desktop */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {tab === 'commits' && (
           <>
-            {data.commits.items.map((c) => (
-              <CommitCard key={c.sha} commit={c} />
-            ))}
+            <CardGrid isDesktop={isDesktop}>
+              {data.commits.items.map((c) => (
+                <CommitCard key={c.sha} commit={c} />
+              ))}
+            </CardGrid>
             {data.commits.total > data.commits.items.length && (
               <MoreLink
                 owner={config.owner}
@@ -714,12 +847,15 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
         )}
         {tab === 'prs' && (
           <>
-            {data.openPRs.items.length === 0 && (
+            {data.openPRs.items.length === 0 ? (
               <EmptyState>No open pull requests.</EmptyState>
+            ) : (
+              <CardGrid isDesktop={isDesktop}>
+                {data.openPRs.items.map((p) => (
+                  <PRCard key={p.number} pr={p} />
+                ))}
+              </CardGrid>
             )}
-            {data.openPRs.items.map((p) => (
-              <PRCard key={p.number} pr={p} />
-            ))}
             {data.openPRs.total > data.openPRs.items.length && (
               <MoreLink
                 owner={config.owner}
@@ -732,12 +868,15 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
         )}
         {tab === 'issues' && (
           <>
-            {data.openIssues.items.length === 0 && (
+            {data.openIssues.items.length === 0 ? (
               <EmptyState>No open issues.</EmptyState>
+            ) : (
+              <CardGrid isDesktop={isDesktop}>
+                {data.openIssues.items.map((i) => (
+                  <IssueCard key={i.number} issue={i} />
+                ))}
+              </CardGrid>
             )}
-            {data.openIssues.items.map((i) => (
-              <IssueCard key={i.number} issue={i} />
-            ))}
             {data.openIssues.total > data.openIssues.items.length && (
               <MoreLink
                 owner={config.owner}

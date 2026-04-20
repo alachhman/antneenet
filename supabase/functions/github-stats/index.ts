@@ -92,9 +92,26 @@ fragment projectFields on ProjectV2 {
     nodes {
       content {
         __typename
-        ... on Issue { title url }
-        ... on PullRequest { title url }
-        ... on DraftIssue { title }
+        ... on Issue {
+          title
+          url
+          number
+          state
+          author { login avatarUrl(size: 48) }
+          labels(first: 5) { nodes { name color } }
+        }
+        ... on PullRequest {
+          title
+          url
+          number
+          state
+          isDraft
+          author { login avatarUrl(size: 48) }
+          labels(first: 5) { nodes { name color } }
+        }
+        ... on DraftIssue {
+          title
+        }
       }
       fieldValueByName(name: "Status") {
         ... on ProjectV2ItemFieldSingleSelectValue {
@@ -230,24 +247,48 @@ Deno.serve(async (req) => {
     })),
   };
 
+  type ProjectItem = {
+    kind: 'issue' | 'pr' | 'draft';
+    title: string;
+    url: string | null;
+    number: number | null;
+    state: string | null;
+    isDraft: boolean;
+    author: { login: string; avatarUrl: string } | null;
+    labels: Array<{ name: string; color: string }>;
+  };
   let project: {
     title: string;
     url: string;
-    columns: Array<{ name: string; total: number; items: Array<{ title: string; url: string | null }> }>;
+    columns: Array<{ name: string; total: number; items: ProjectItem[] }>;
   } | null = null;
 
   // Project is queried at user scope (user-owned projects).
   const projectNode = j.data?.user?.projectV2 ?? null;
   if (projectNode) {
     const options: Array<{ id: string; name: string }> = projectNode.field?.options ?? [];
-    const grouped: Record<string, Array<{ title: string; url: string | null }>> = {};
+    const grouped: Record<string, ProjectItem[]> = {};
     for (const opt of options) grouped[opt.name] = [];
     for (const item of projectNode.items?.nodes ?? []) {
       const statusName: string | undefined = item.fieldValueByName?.name;
       if (!statusName || !(statusName in grouped)) continue;
-      const title: string = item.content?.title ?? '(untitled)';
-      const url: string | null = item.content?.url ?? null;
-      grouped[statusName].push({ title, url });
+      const c = item.content ?? {};
+      const kind: ProjectItem['kind'] =
+        c.__typename === 'Issue' ? 'issue' :
+        c.__typename === 'PullRequest' ? 'pr' :
+        'draft';
+      grouped[statusName].push({
+        kind,
+        title: c.title ?? '(untitled)',
+        url: c.url ?? null,
+        number: c.number ?? null,
+        state: c.state ?? null,
+        isDraft: !!c.isDraft,
+        author: c.author
+          ? { login: c.author.login, avatarUrl: c.author.avatarUrl }
+          : null,
+        labels: (c.labels?.nodes ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+      });
     }
     project = {
       title: projectNode.title,
