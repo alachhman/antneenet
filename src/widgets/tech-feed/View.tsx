@@ -1,8 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Label } from '../../ui';
 
 type FeedSource = { type: 'hn' | 'reddit' | 'rss'; value: string };
-export type TechFeedConfig = { sources: FeedSource[] };
+type FeedCategory = { name: string; sources: FeedSource[] };
+
+// Config shape supports both the current categorized form and legacy flat sources.
+// Legacy shape is coerced into a single "News" category on read.
+export type TechFeedConfig =
+  | { categories: FeedCategory[] }
+  | { sources: FeedSource[] };
 
 type Item = {
   title: string;
@@ -13,7 +20,18 @@ type Item = {
   snippet?: string;
 };
 
+function normalizeConfig(config: TechFeedConfig): FeedCategory[] {
+  if ('categories' in config && Array.isArray(config.categories)) {
+    return config.categories;
+  }
+  if ('sources' in config && Array.isArray(config.sources)) {
+    return [{ name: 'News', sources: config.sources }];
+  }
+  return [];
+}
+
 async function fetchFeed(sources: FeedSource[]): Promise<Item[]> {
+  if (!sources.length) return [];
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tech-feed`;
   const r = await fetch(url, {
     method: 'POST',
@@ -37,8 +55,6 @@ function ago(ts: number) {
   return `${Math.floor(s / 86400)}d`;
 }
 
-// Palette of source-badge colors. Stored as [r, g, b] so we can derive a
-// matching tinted background + full-opacity foreground from a single tuple.
 const BADGE_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
   [20, 184, 166],   // teal
   [249, 115, 22],   // orange
@@ -52,7 +68,6 @@ const BADGE_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
   [79, 70, 229],    // indigo
 ];
 
-// Stable string → palette index. Same label always picks the same color.
 function hashIndex(s: string, mod: number): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
@@ -65,80 +80,149 @@ function badgeColors(label: string): { bg: string; fg: string } {
 }
 
 export function View({ config }: { instanceId: string; config: TechFeedConfig }) {
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['tech-feed', JSON.stringify(config.sources)],
-    queryFn: () => fetchFeed(config.sources),
-    staleTime: 5 * 60_000,
-    refetchInterval: 5 * 60_000,
-    enabled: config.sources.length > 0,
+  const categories = normalizeConfig(config);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const safeIdx = Math.min(activeIdx, Math.max(0, categories.length - 1));
+  const activeCategory = categories[safeIdx];
+
+  // Fetch each category in parallel so pill-count badges can show live totals.
+  // Queries are keyed on sources so cache is stable across tab switches.
+  const queries = useQueries({
+    queries: categories.map((c) => ({
+      queryKey: ['tech-feed', c.name, JSON.stringify(c.sources)],
+      queryFn: () => fetchFeed(c.sources),
+      staleTime: 5 * 60_000,
+      refetchInterval: 5 * 60_000,
+      enabled: c.sources.length > 0,
+    })),
   });
 
+  const activeQuery = queries[safeIdx];
+  const activeData: Item[] = activeQuery?.data ?? [];
+  const activeIsLoading = !!activeQuery?.isLoading;
+
+  if (categories.length === 0) {
+    return (
+      <div>
+        <Label>News Feed</Label>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+          Enter edit mode → gear icon to configure feeds.
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ overflowY: 'auto', height: '100%' }}>
-      <Label>Tech Feed · {data.length}</Label>
-      {isLoading && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Loading…</div>}
-      {data.map((i, idx) => {
-        const colors = badgeColors(i.label);
-        return (
-          <a
-            key={idx}
-            href={i.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: 'block',
-              padding: '6px 0',
-              fontSize: 11,
-              borderTop: '1px solid var(--divider)',
-              color: 'var(--text)',
-            }}
-          >
-            <div>
-              <span
-                title={i.label}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Label>
+        News Feed{activeCategory ? ` · ${activeCategory.name}` : ''}
+      </Label>
+
+      {/* Category pills */}
+      {categories.length > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 4,
+            marginBottom: 8,
+          }}
+        >
+          {categories.map((c, idx) => {
+            const isActive = idx === safeIdx;
+            const q = queries[idx];
+            const count = q?.data?.length;
+            return (
+              <button
+                key={c.name}
+                onClick={() => setActiveIdx(idx)}
                 style={{
-                  display: 'inline-block',
-                  width: 100,
-                  padding: '1px 6px',
-                  marginRight: 6,
-                  borderRadius: 4,
-                  background: colors.bg,
-                  color: colors.fg,
-                  fontSize: 9,
-                  fontWeight: 600,
-                  letterSpacing: '0.2px',
-                  textAlign: 'center',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  verticalAlign: '1px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {i.label}
-              </span>
-              <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
-              {i.title}
-            </div>
-            {i.snippet && (
-              <div
-                style={{
-                  marginTop: 3,
+                  boxShadow: isActive ? 'var(--inset)' : 'var(--raised-sm)',
+                  padding: '3px 10px',
+                  borderRadius: 6,
                   fontSize: 10,
-                  color: 'var(--text-dim)',
-                  lineHeight: 1.4,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
+                  color: isActive ? 'var(--accent)' : 'var(--text)',
+                  fontWeight: isActive ? 600 : 500,
                 }}
               >
-                {i.snippet}
+                {c.name}
+                {typeof count === 'number' && (
+                  <span style={{ marginLeft: 5, opacity: 0.7 }}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Feed items for active category */}
+      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        {activeIsLoading && (
+          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Loading…</div>
+        )}
+        {activeData.map((i, idx) => {
+          const colors = badgeColors(i.label);
+          return (
+            <a
+              key={idx}
+              href={i.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'block',
+                padding: '6px 0',
+                fontSize: 11,
+                borderTop: '1px solid var(--divider)',
+                color: 'var(--text)',
+              }}
+            >
+              <div>
+                <span
+                  title={i.label}
+                  style={{
+                    display: 'inline-block',
+                    width: 100,
+                    padding: '1px 6px',
+                    marginRight: 6,
+                    borderRadius: 4,
+                    background: colors.bg,
+                    color: colors.fg,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: '0.2px',
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    verticalAlign: '1px',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {i.label}
+                </span>
+                <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{ago(i.timestamp)}</span>
+                {i.title}
               </div>
-            )}
-          </a>
-        );
-      })}
+              {i.snippet && (
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontSize: 10,
+                    color: 'var(--text-dim)',
+                    lineHeight: 1.4,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {i.snippet}
+                </div>
+              )}
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }
