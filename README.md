@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# antneenet — personal dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A self-hosted widget-based personal dashboard. Deep-navy + cyan neumorphic UI, draggable bento grid, five MVP widgets (bookmarks, weather, habits, stocks, tech feed), shared-password auth, cross-device sync via Supabase.
 
-Currently, two official plugins are available:
+## Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend**: Vite + React + TypeScript, hosted on GitHub Pages
+- **Backend**: Supabase (Postgres + Edge Functions + Auth)
+- **Auth**: Single shared password → fake single user → Supabase session
 
-## React Compiler
+See `docs/superpowers/specs/2026-04-20-personal-dashboard-design.md` for the full spec.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Setup
 
-## Expanding the ESLint configuration
+### 1. Supabase
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Create a Supabase Pro project, then follow `supabase/README.md`:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.local.example .env.local
+# fill in VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, INITIAL_PASSWORD
+supabase link --project-ref <ref>
+npm run db:push
+npm run db:seed
+supabase secrets set OPENWEATHER_API_KEY="..." FINNHUB_API_KEY="..." SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY"
+npm run fn:deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. GitHub Pages
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Create a GitHub repo, push this code.
+- In repo Settings → Pages, enable "GitHub Actions" as the source.
+- Add repo secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- Push to `main` — deploy runs automatically.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Dev
+
+```bash
+npm run dev        # Vite dev server (http://localhost:5173)
+npm test           # unit tests
+npm run typecheck  # tsc --noEmit
 ```
+
+## Rotating the password
+
+```bash
+INITIAL_PASSWORD=newpass npm run rotate-password
+# Add --force-logout to invalidate existing sessions:
+INITIAL_PASSWORD=newpass npm run rotate-password -- --force-logout
+```
+
+## Adding a new widget
+
+1. `src/widgets/<name>/` — create `index.tsx`, `View.tsx`, `Settings.tsx`, `<Name>.test.tsx`.
+2. Export a `WidgetDefinition` from `index.tsx`.
+3. Add the type to `src/lib/database-types.ts`'s `WidgetType` union.
+4. Register the definition in `src/lib/widget-registry.ts`.
+5. If the widget needs a server-side data source, add an Edge Function under `supabase/functions/<name>/`.
