@@ -813,24 +813,30 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
         />
       </div>
 
-      {/* Kanban pills + expanded cards. Not a tab; always visible. */}
+      {/* Kanban pills stay fixed at top; the expanded cards live inside
+          the scroll area below so they scroll with the rest of the content. */}
       {data.project && (
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 14 }}>
           <KanbanPills
             columns={data.project.columns}
             expanded={expandedColumn}
             onToggle={(name) => setExpandedColumn(expandedColumn === name ? null : name)}
           />
-          <KanbanExpanded
-            project={data.project}
-            expanded={expandedColumn}
-            isDesktop={isDesktop}
-          />
         </div>
       )}
 
-      {/* Active tab content — rich cards, tiled on desktop */}
+      {/* Active tab content — rich cards, tiled on desktop.
+          Expanded kanban column (if any) scrolls alongside. */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {data.project && expandedColumn && (
+          <div style={{ marginBottom: 16 }}>
+            <KanbanExpanded
+              project={data.project}
+              expanded={expandedColumn}
+              isDesktop={isDesktop}
+            />
+          </div>
+        )}
         {tab === 'commits' && (
           <>
             <CardGrid isDesktop={isDesktop}>
