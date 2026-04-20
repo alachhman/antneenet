@@ -26,8 +26,17 @@ query($owner: String!, $repo: String!, $projectNumber: Int!, $since: GitTimestam
             nodes {
               oid
               messageHeadline
+              messageBody
               committedDate
               url
+              additions
+              deletions
+              changedFilesIfAvailable
+              author {
+                name
+                avatarUrl(size: 48)
+                user { login }
+              }
             }
           }
         }
@@ -35,11 +44,35 @@ query($owner: String!, $repo: String!, $projectNumber: Int!, $since: GitTimestam
     }
     pullRequests(states: OPEN, first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
       totalCount
-      nodes { number title url }
+      nodes {
+        number
+        title
+        url
+        isDraft
+        state
+        baseRefName
+        headRefName
+        additions
+        deletions
+        updatedAt
+        reviewDecision
+        author { login avatarUrl(size: 48) }
+        labels(first: 5) { nodes { name color } }
+        comments { totalCount }
+      }
     }
     issues(states: OPEN, first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
       totalCount
-      nodes { number title url }
+      nodes {
+        number
+        title
+        url
+        updatedAt
+        author { login avatarUrl(size: 48) }
+        labels(first: 5) { nodes { name color } }
+        comments { totalCount }
+        assignees(first: 3) { nodes { login avatarUrl(size: 48) } }
+      }
     }
   }
   user(login: $owner) {
@@ -141,27 +174,59 @@ Deno.serve(async (req) => {
     total: history.totalCount,
     items: (history.nodes ?? []).slice(0, 10).map((n: any) => ({
       sha: n.oid?.slice(0, 7) ?? '',
-      message: n.messageHeadline,
+      message: n.messageHeadline ?? '',
+      body: n.messageBody ?? '',
       url: n.url,
       date: n.committedDate,
+      author: {
+        name: n.author?.name ?? n.author?.user?.login ?? 'unknown',
+        login: n.author?.user?.login ?? null,
+        avatarUrl: n.author?.avatarUrl ?? null,
+      },
+      additions: n.additions ?? 0,
+      deletions: n.deletions ?? 0,
+      changedFiles: n.changedFilesIfAvailable ?? 0,
     })),
   };
 
   const openPRs = {
     total: repoData.pullRequests?.totalCount ?? 0,
-    items: (repoData.pullRequests?.nodes ?? []).slice(0, 5).map((n: any) => ({
+    items: (repoData.pullRequests?.nodes ?? []).slice(0, 10).map((n: any) => ({
       number: n.number,
-      title: n.title,
+      title: n.title ?? '',
       url: n.url,
+      isDraft: !!n.isDraft,
+      state: n.state ?? 'OPEN',
+      baseRefName: n.baseRefName ?? null,
+      headRefName: n.headRefName ?? null,
+      additions: n.additions ?? 0,
+      deletions: n.deletions ?? 0,
+      updatedAt: n.updatedAt,
+      reviewDecision: n.reviewDecision ?? null,
+      author: n.author
+        ? { login: n.author.login, avatarUrl: n.author.avatarUrl }
+        : null,
+      labels: (n.labels?.nodes ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+      commentsCount: n.comments?.totalCount ?? 0,
     })),
   };
 
   const openIssues = {
     total: repoData.issues?.totalCount ?? 0,
-    items: (repoData.issues?.nodes ?? []).slice(0, 5).map((n: any) => ({
+    items: (repoData.issues?.nodes ?? []).slice(0, 10).map((n: any) => ({
       number: n.number,
-      title: n.title,
+      title: n.title ?? '',
       url: n.url,
+      updatedAt: n.updatedAt,
+      author: n.author
+        ? { login: n.author.login, avatarUrl: n.author.avatarUrl }
+        : null,
+      labels: (n.labels?.nodes ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+      commentsCount: n.comments?.totalCount ?? 0,
+      assignees: (n.assignees?.nodes ?? []).map((a: any) => ({
+        login: a.login,
+        avatarUrl: a.avatarUrl,
+      })),
     })),
   };
 

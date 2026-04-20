@@ -8,18 +8,68 @@ export type GithubConfig = {
   projectNumber: number;
 };
 
+type Author = { name?: string; login: string | null; avatarUrl: string | null };
+type PRAuthor = { login: string; avatarUrl: string } | null;
+type GhLabel = { name: string; color: string };
+
+type Commit = {
+  sha: string;
+  message: string;
+  body: string;
+  url: string;
+  date: string;
+  author: Author;
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+};
+
+type PR = {
+  number: number;
+  title: string;
+  url: string;
+  isDraft: boolean;
+  state: string;
+  baseRefName: string | null;
+  headRefName: string | null;
+  additions: number;
+  deletions: number;
+  updatedAt: string;
+  reviewDecision: string | null;
+  author: PRAuthor;
+  labels: GhLabel[];
+  commentsCount: number;
+};
+
+type Issue = {
+  number: number;
+  title: string;
+  url: string;
+  updatedAt: string;
+  author: PRAuthor;
+  labels: GhLabel[];
+  commentsCount: number;
+  assignees: Array<{ login: string; avatarUrl: string }>;
+};
+
 type Stats = {
   owner: string;
   repo: string;
-  commits: { total: number; items: Array<{ sha: string; message: string; url: string; date: string }> };
-  openPRs: { total: number; items: Array<{ number: number; title: string; url: string }> };
-  openIssues: { total: number; items: Array<{ number: number; title: string; url: string }> };
+  commits: { total: number; items: Commit[] };
+  openPRs: { total: number; items: PR[] };
+  openIssues: { total: number; items: Issue[] };
   project: {
     title: string;
     url: string;
     columns: Array<{ name: string; total: number; items: Array<{ title: string; url: string | null }> }>;
   } | null;
 };
+
+type Tab = 'commits' | 'prs' | 'issues';
+
+// ------------------------------------------------------------------
+// Data fetching
+// ------------------------------------------------------------------
 
 async function fetchStats(cfg: GithubConfig): Promise<Stats> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-stats`;
@@ -39,7 +89,11 @@ async function fetchStats(cfg: GithubConfig): Promise<Stats> {
   return r.json();
 }
 
-function ago(iso: string) {
+// ------------------------------------------------------------------
+// Utilities
+// ------------------------------------------------------------------
+
+function ago(iso: string): string {
   const s = Math.floor((Date.now() - Date.parse(iso)) / 1000);
   if (s < 60) return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m`;
@@ -47,7 +101,17 @@ function ago(iso: string) {
   return `${Math.floor(s / 86400)}d`;
 }
 
-// Desktop breakpoint matches react-grid-layout's md cutoff.
+// Pick black or white text for a given hex background, based on luminance.
+function contrastText(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#000';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.55 ? '#1e293b' : '#fff';
+}
+
 const DESKTOP_BP = 768;
 
 function useIsDesktop(): boolean {
@@ -63,16 +127,457 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
-const linkStyle: React.CSSProperties = {
-  color: 'var(--text)',
+// ------------------------------------------------------------------
+// Shared building blocks
+// ------------------------------------------------------------------
+
+function Avatar({ src, alt, size = 18 }: { src: string | null; alt: string; size?: number }) {
+  if (!src) {
+    return (
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-block',
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          background: 'var(--shadow-dark)',
+          verticalAlign: 'middle',
+        }}
+      />
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      style={{
+        borderRadius: '50%',
+        verticalAlign: 'middle',
+        boxShadow: '0 0 0 1px rgba(0,0,0,0.06)',
+      }}
+    />
+  );
+}
+
+function LabelPill({ label }: { label: GhLabel }) {
+  const hex = `#${label.color || '94a3b8'}`;
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '1px 6px',
+        borderRadius: 10,
+        background: hex,
+        color: contrastText(hex),
+        fontSize: 9,
+        fontWeight: 600,
+        letterSpacing: '0.1px',
+        marginRight: 4,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label.name}
+    </span>
+  );
+}
+
+function DiffBadge({ additions, deletions }: { additions: number; deletions: number }) {
+  return (
+    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+      <span style={{ color: 'var(--up)' }}>+{additions}</span>
+      <span style={{ color: 'var(--text-dim)', margin: '0 2px' }}>/</span>
+      <span style={{ color: 'var(--down)' }}>−{deletions}</span>
+    </span>
+  );
+}
+
+function StatTab({
+  label,
+  value,
+  active,
+  onClick,
+  clickable,
+}: {
+  label: string;
+  value: number;
+  active: boolean;
+  onClick?: () => void;
+  clickable: boolean;
+}) {
+  return (
+    <button
+      onClick={clickable ? onClick : undefined}
+      disabled={!clickable}
+      style={{
+        boxShadow: active ? 'var(--inset)' : 'var(--raised-sm)',
+        borderRadius: 8,
+        padding: '8px 10px',
+        textAlign: 'center',
+        cursor: clickable ? 'pointer' : 'default',
+        transition: 'box-shadow 0.15s ease',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 20,
+          fontWeight: 500,
+          color: active ? 'var(--accent)' : 'var(--text)',
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          fontSize: 9,
+          color: 'var(--text-dim)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.4px',
+          marginTop: 2,
+        }}
+      >
+        {label}
+      </div>
+    </button>
+  );
+}
+
+// ------------------------------------------------------------------
+// Rich cards
+// ------------------------------------------------------------------
+
+const cardLinkStyle: React.CSSProperties = {
   display: 'block',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
+  boxShadow: 'var(--raised-sm)',
+  borderRadius: 'var(--radius-inset)',
+  padding: '10px 12px',
+  marginBottom: 8,
+  color: 'var(--text)',
+  transition: 'box-shadow 0.15s ease',
 };
+
+function CommitCard({ commit }: { commit: Commit }) {
+  return (
+    <a href={commit.url} target="_blank" rel="noreferrer" style={cardLinkStyle}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'var(--accent)',
+            background: 'rgba(20, 184, 166, 0.14)',
+            padding: '1px 6px',
+            borderRadius: 4,
+            flexShrink: 0,
+          }}
+        >
+          {commit.sha}
+        </span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {commit.message}
+        </span>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 10,
+          color: 'var(--text-dim)',
+        }}
+      >
+        <Avatar src={commit.author.avatarUrl} alt={commit.author.name ?? 'author'} size={16} />
+        <span>{commit.author.login ?? commit.author.name}</span>
+        <span>·</span>
+        <span>{ago(commit.date)}</span>
+        <span>·</span>
+        <DiffBadge additions={commit.additions} deletions={commit.deletions} />
+        {commit.changedFiles > 0 && (
+          <>
+            <span>·</span>
+            <span>
+              {commit.changedFiles} file{commit.changedFiles === 1 ? '' : 's'}
+            </span>
+          </>
+        )}
+      </div>
+    </a>
+  );
+}
+
+function PRCard({ pr }: { pr: PR }) {
+  return (
+    <a href={pr.url} target="_blank" rel="noreferrer" style={cardLinkStyle}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 6,
+        }}
+      >
+        {pr.isDraft && (
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 600,
+              background: 'var(--shadow-dark)',
+              color: 'var(--text-dim)',
+              padding: '1px 6px',
+              borderRadius: 10,
+              flexShrink: 0,
+            }}
+          >
+            DRAFT
+          </span>
+        )}
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>#{pr.number}</span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {pr.title}
+        </span>
+      </div>
+      {pr.labels.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          {pr.labels.map((l) => (
+            <LabelPill key={l.name} label={l} />
+          ))}
+        </div>
+      )}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 10,
+          color: 'var(--text-dim)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Avatar src={pr.author?.avatarUrl ?? null} alt={pr.author?.login ?? 'author'} size={16} />
+        <span>{pr.author?.login ?? 'ghost'}</span>
+        <span>·</span>
+        <span>{ago(pr.updatedAt)}</span>
+        <span>·</span>
+        <DiffBadge additions={pr.additions} deletions={pr.deletions} />
+        {pr.commentsCount > 0 && (
+          <>
+            <span>·</span>
+            <span>💬 {pr.commentsCount}</span>
+          </>
+        )}
+      </div>
+      {(pr.baseRefName || pr.headRefName) && (
+        <div
+          style={{
+            marginTop: 4,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'var(--text-dim)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span>{pr.headRefName}</span>
+          <span style={{ margin: '0 4px' }}>→</span>
+          <span>{pr.baseRefName}</span>
+        </div>
+      )}
+    </a>
+  );
+}
+
+function IssueCard({ issue }: { issue: Issue }) {
+  return (
+    <a href={issue.url} target="_blank" rel="noreferrer" style={cardLinkStyle}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 6,
+        }}
+      >
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>#{issue.number}</span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {issue.title}
+        </span>
+      </div>
+      {issue.labels.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          {issue.labels.map((l) => (
+            <LabelPill key={l.name} label={l} />
+          ))}
+        </div>
+      )}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 10,
+          color: 'var(--text-dim)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Avatar src={issue.author?.avatarUrl ?? null} alt={issue.author?.login ?? 'author'} size={16} />
+        <span>{issue.author?.login ?? 'ghost'}</span>
+        <span>·</span>
+        <span>{ago(issue.updatedAt)}</span>
+        {issue.commentsCount > 0 && (
+          <>
+            <span>·</span>
+            <span>💬 {issue.commentsCount}</span>
+          </>
+        )}
+        {issue.assignees.length > 0 && (
+          <>
+            <span>·</span>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {issue.assignees.map((a) => (
+                <Avatar key={a.login} src={a.avatarUrl} alt={a.login} size={14} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </a>
+  );
+}
+
+// ------------------------------------------------------------------
+// Kanban bits (reused from the previous view, unchanged logic)
+// ------------------------------------------------------------------
+
+function KanbanPills({
+  columns,
+  expanded,
+  onToggle,
+}: {
+  columns: NonNullable<Stats['project']>['columns'];
+  expanded: string | null;
+  onToggle: (name: string) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {columns.map((col) => {
+        const isExpanded = expanded === col.name;
+        return (
+          <button
+            key={col.name}
+            onClick={() => onToggle(col.name)}
+            style={{
+              boxShadow: isExpanded ? 'var(--inset)' : 'var(--raised-sm)',
+              padding: '3px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              color: isExpanded ? 'var(--accent)' : 'var(--text)',
+            }}
+          >
+            {col.name} {col.total}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function KanbanExpanded({
+  project,
+  expanded,
+}: {
+  project: NonNullable<Stats['project']>;
+  expanded: string | null;
+}) {
+  if (!expanded) return null;
+  const col = project.columns.find((c) => c.name === expanded);
+  if (!col) return null;
+  return (
+    <div style={{ marginTop: 6 }}>
+      {col.items.map((item, idx) => (
+        <div key={idx} style={{ fontSize: 11 }}>
+          {item.url ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: 'var(--text)',
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {item.title}
+            </a>
+          ) : (
+            <span style={{ color: 'var(--text-dim)' }}>{item.title}</span>
+          )}
+        </div>
+      ))}
+      {col.total > col.items.length && (
+        <a
+          href={project.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: 'var(--accent)', fontSize: 10 }}
+        >
+          +{col.total - col.items.length} more →
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Main view
+// ------------------------------------------------------------------
 
 export function View({ config }: { instanceId: string; config: GithubConfig }) {
   const isDesktop = useIsDesktop();
+  const [tab, setTab] = useState<Tab>('commits');
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ['github-stats', config.owner, config.repo, config.projectNumber],
     queryFn: () => fetchStats(config),
@@ -107,7 +612,7 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
 
   if (isLoading) {
     return (
-      <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
+      <div style={{ fontSize: 11 }}>
         {header}
         <div style={{ color: 'var(--text-dim)' }}>Loading…</div>
       </div>
@@ -115,7 +620,7 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
   }
   if (error) {
     return (
-      <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
+      <div style={{ fontSize: 11 }}>
         {header}
         <div style={{ color: 'var(--down)' }}>
           {error instanceof Error ? error.message : 'error loading'}
@@ -125,142 +630,62 @@ export function View({ config }: { instanceId: string; config: GithubConfig }) {
   }
   if (!data) return null;
 
-  return isDesktop ? (
-    <DesktopView config={config} data={data} header={header} />
-  ) : (
-    <MobileView config={config} data={data} header={header} />
-  );
-}
-
-// ------------------------------------------------------------------
-// Mobile view — vertical, compact. Same as the original layout.
-// ------------------------------------------------------------------
-function MobileView({
-  config,
-  data,
-  header,
-}: {
-  config: GithubConfig;
-  data: Stats;
-  header: React.ReactNode;
-}) {
-  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
-  return (
-    <div style={{ overflowY: 'auto', height: '100%', fontSize: 11 }}>
-      {header}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 6,
-          marginBottom: 10,
-        }}
-      >
-        <Stat label="commits/wk" value={data.commits.total} />
-        <Stat label="open PRs" value={data.openPRs.total} />
-        <Stat label="open issues" value={data.openIssues.total} />
-      </div>
-
-      {data.commits.items.length > 0 && (
-        <Section title={`commits · ${data.commits.total}`}>
-          <CommitsList items={data.commits.items} />
-          {data.commits.total > data.commits.items.length && (
-            <MoreLink owner={config.owner} repo={config.repo} path="commits" />
-          )}
-        </Section>
-      )}
-
-      {data.openPRs.items.length > 0 && (
-        <Section title={`PRs · ${data.openPRs.total}`}>
-          <NumberedList items={data.openPRs.items} />
-          {data.openPRs.total > data.openPRs.items.length && (
-            <MoreLink owner={config.owner} repo={config.repo} path="pulls" />
-          )}
-        </Section>
-      )}
-
-      {data.openIssues.items.length > 0 && (
-        <Section title={`issues · ${data.openIssues.total}`}>
-          <NumberedList items={data.openIssues.items} />
-          {data.openIssues.total > data.openIssues.items.length && (
-            <MoreLink owner={config.owner} repo={config.repo} path="issues" />
-          )}
-        </Section>
-      )}
-
-      {data.project && (
-        <Section
-          title={
-            <a
-              href={data.project.url}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: 'inherit' }}
-            >
-              {data.project.title}
-            </a>
-          }
-        >
-          <KanbanPills
-            columns={data.project.columns}
-            expanded={expandedColumn}
-            onToggle={(name) => setExpandedColumn(expandedColumn === name ? null : name)}
-          />
-          <KanbanExpanded project={data.project} expanded={expandedColumn} />
-        </Section>
-      )}
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------
-// Desktop view — hero banner + two-column layout (layout C).
-// ------------------------------------------------------------------
-function DesktopView({
-  config,
-  data,
-  header,
-}: {
-  config: GithubConfig;
-  data: Stats;
-  header: React.ReactNode;
-}) {
-  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
-
-  const kanbanTotal =
+  const projectTotal =
     data.project?.columns.reduce((sum, c) => sum + c.total, 0) ?? 0;
 
   return (
     <div
       style={{
         height: '100%',
-        fontSize: 11,
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
+        fontSize: 11,
       }}
     >
       {header}
 
-      {/* Hero banner: 4 stat tiles */}
+      {/* Stats + project tile — 3 of 4 double as the active-tab selector. */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: `repeat(${isDesktop ? 4 : 2}, 1fr)`,
           gap: 8,
           marginBottom: 10,
         }}
       >
-        <Stat label="commits this week" value={data.commits.total} big />
-        <Stat label="open PRs" value={data.openPRs.total} big />
-        <Stat label="open issues" value={data.openIssues.total} big />
-        <Stat label={data.project?.title ?? 'project'} value={kanbanTotal} big />
+        <StatTab
+          label="commits this week"
+          value={data.commits.total}
+          active={tab === 'commits'}
+          onClick={() => setTab('commits')}
+          clickable
+        />
+        <StatTab
+          label="open PRs"
+          value={data.openPRs.total}
+          active={tab === 'prs'}
+          onClick={() => setTab('prs')}
+          clickable
+        />
+        <StatTab
+          label="open issues"
+          value={data.openIssues.total}
+          active={tab === 'issues'}
+          onClick={() => setTab('issues')}
+          clickable
+        />
+        <StatTab
+          label={data.project?.title ?? 'project'}
+          value={projectTotal}
+          active={false}
+          clickable={false}
+        />
       </div>
 
-      {/* Kanban column pills (always visible) */}
+      {/* Kanban pills + expanded cards. Not a tab; always visible. */}
       {data.project && (
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: 12 }}>
           <KanbanPills
             columns={data.project.columns}
             expanded={expandedColumn}
@@ -270,206 +695,104 @@ function DesktopView({
         </div>
       )}
 
-      {/* Two-column grid: commits left, PRs + Issues right */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '3fr 2fr',
-          gap: 14,
-          minHeight: 0,
-          flex: 1,
-        }}
-      >
-        <div style={{ overflowY: 'auto', minHeight: 0 }}>
-          {data.commits.items.length > 0 && (
-            <Section title={`commits this week · ${data.commits.total}`}>
-              <CommitsList items={data.commits.items} />
-              {data.commits.total > data.commits.items.length && (
-                <MoreLink owner={config.owner} repo={config.repo} path="commits" />
-              )}
-            </Section>
-          )}
-        </div>
-
-        <div style={{ overflowY: 'auto', minHeight: 0 }}>
-          {data.openPRs.items.length > 0 && (
-            <Section title={`open PRs · ${data.openPRs.total}`}>
-              <NumberedList items={data.openPRs.items} />
-              {data.openPRs.total > data.openPRs.items.length && (
-                <MoreLink owner={config.owner} repo={config.repo} path="pulls" />
-              )}
-            </Section>
-          )}
-
-          {data.openIssues.items.length > 0 && (
-            <Section title={`open issues · ${data.openIssues.total}`}>
-              <NumberedList items={data.openIssues.items} />
-              {data.openIssues.total > data.openIssues.items.length && (
-                <MoreLink owner={config.owner} repo={config.repo} path="issues" />
-              )}
-            </Section>
-          )}
-        </div>
+      {/* Active tab content — rich cards */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {tab === 'commits' && (
+          <>
+            {data.commits.items.map((c) => (
+              <CommitCard key={c.sha} commit={c} />
+            ))}
+            {data.commits.total > data.commits.items.length && (
+              <MoreLink
+                owner={config.owner}
+                repo={config.repo}
+                path="commits"
+                extra={data.commits.total - data.commits.items.length}
+              />
+            )}
+          </>
+        )}
+        {tab === 'prs' && (
+          <>
+            {data.openPRs.items.length === 0 && (
+              <EmptyState>No open pull requests.</EmptyState>
+            )}
+            {data.openPRs.items.map((p) => (
+              <PRCard key={p.number} pr={p} />
+            ))}
+            {data.openPRs.total > data.openPRs.items.length && (
+              <MoreLink
+                owner={config.owner}
+                repo={config.repo}
+                path="pulls"
+                extra={data.openPRs.total - data.openPRs.items.length}
+              />
+            )}
+          </>
+        )}
+        {tab === 'issues' && (
+          <>
+            {data.openIssues.items.length === 0 && (
+              <EmptyState>No open issues.</EmptyState>
+            )}
+            {data.openIssues.items.map((i) => (
+              <IssueCard key={i.number} issue={i} />
+            ))}
+            {data.openIssues.total > data.openIssues.items.length && (
+              <MoreLink
+                owner={config.owner}
+                repo={config.repo}
+                path="issues"
+                extra={data.openIssues.total - data.openIssues.items.length}
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// ------------------------------------------------------------------
-// Shared building blocks
-// ------------------------------------------------------------------
-
-function Stat({ label, value, big = false }: { label: string; value: number; big?: boolean }) {
+function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        boxShadow: 'var(--inset)',
-        borderRadius: 6,
-        padding: big ? '10px 12px' : '4px 8px',
+        fontSize: 11,
+        color: 'var(--text-dim)',
+        padding: '20px 0',
         textAlign: 'center',
       }}
     >
-      <div style={{ fontSize: big ? 22 : 16, fontWeight: 500 }}>{value}</div>
-      <div style={{ fontSize: big ? 10 : 9, color: 'var(--text-dim)' }}>{label}</div>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div
-        style={{
-          fontSize: 9,
-          color: 'var(--accent)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.6px',
-          marginBottom: 3,
-        }}
-      >
-        {title}
-      </div>
       {children}
     </div>
   );
 }
 
-function MoreLink({ owner, repo, path }: { owner: string; repo: string; path: string }) {
+function MoreLink({
+  owner,
+  repo,
+  path,
+  extra,
+}: {
+  owner: string;
+  repo: string;
+  path: string;
+  extra: number;
+}) {
   return (
     <a
       href={`https://github.com/${owner}/${repo}/${path}`}
       target="_blank"
       rel="noreferrer"
-      style={{ color: 'var(--accent)', fontSize: 10 }}
+      style={{
+        display: 'block',
+        color: 'var(--accent)',
+        fontSize: 10,
+        textAlign: 'center',
+        padding: '6px 0',
+      }}
     >
-      + more →
+      + {extra} more on GitHub →
     </a>
-  );
-}
-
-function CommitsList({ items }: { items: Stats['commits']['items'] }) {
-  return (
-    <>
-      {items.map((c) => (
-        <a key={c.sha} href={c.url} target="_blank" rel="noreferrer" style={linkStyle}>
-          <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>{c.sha}</span>
-          {c.message}
-          <span style={{ color: 'var(--text-dim)', marginLeft: 6 }}>· {ago(c.date)}</span>
-        </a>
-      ))}
-    </>
-  );
-}
-
-function NumberedList({
-  items,
-}: {
-  items: Array<{ number: number; title: string; url: string }>;
-}) {
-  return (
-    <>
-      {items.map((it) => (
-        <a key={it.number} href={it.url} target="_blank" rel="noreferrer" style={linkStyle}>
-          <span style={{ color: 'var(--text-dim)', marginRight: 6 }}>#{it.number}</span>
-          {it.title}
-        </a>
-      ))}
-    </>
-  );
-}
-
-function KanbanPills({
-  columns,
-  expanded,
-  onToggle,
-}: {
-  columns: NonNullable<Stats['project']>['columns'];
-  expanded: string | null;
-  onToggle: (name: string) => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-      {columns.map((col) => {
-        const isExpanded = expanded === col.name;
-        return (
-          <button
-            key={col.name}
-            onClick={() => onToggle(col.name)}
-            style={{
-              boxShadow: isExpanded ? 'var(--inset)' : 'var(--raised-sm)',
-              padding: '3px 10px',
-              borderRadius: 6,
-              fontSize: 10,
-              color: isExpanded ? 'var(--accent)' : 'var(--text)',
-            }}
-          >
-            {col.name} {col.total}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function KanbanExpanded({
-  project,
-  expanded,
-}: {
-  project: NonNullable<Stats['project']>;
-  expanded: string | null;
-}) {
-  if (!expanded) return null;
-  const col = project.columns.find((c) => c.name === expanded);
-  if (!col) return null;
-  return (
-    <>
-      {col.items.map((item, idx) => (
-        <div key={idx}>
-          {item.url ? (
-            <a href={item.url} target="_blank" rel="noreferrer" style={linkStyle}>
-              {item.title}
-            </a>
-          ) : (
-            <span style={{ ...linkStyle, color: 'var(--text-dim)' }}>{item.title}</span>
-          )}
-        </div>
-      ))}
-      {col.total > col.items.length && (
-        <a
-          href={project.url}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 10 }}
-        >
-          +{col.total - col.items.length} more →
-        </a>
-      )}
-    </>
   );
 }
