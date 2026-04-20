@@ -1,0 +1,27 @@
+import type { ReactNode } from 'react';
+
+type Props = {
+  label: ReactNode;
+  value: ReactNode;
+  trend?: 'up' | 'down' | 'neutral';
+};
+
+export function DataRow({ label, value, trend = 'neutral' }: Props) {
+  const color =
+    trend === 'up' ? 'var(--up)' : trend === 'down' ? 'var(--down)' : 'var(--text)';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: 11,
+        padding: '3px 0',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      <span>{label}</span>
+      <span style={{ color }}>{value}</span>
+    </div>
+  );
+}
