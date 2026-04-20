@@ -25,3 +25,10 @@ dist-ssr
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# env
+.env.local
+
+# supabase CLI state
+supabase/.temp
+supabase/.branches
