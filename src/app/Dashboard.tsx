@@ -13,6 +13,7 @@ import {
 } from '../lib/dashboard-queries';
 import { getDefinition, registry } from '../lib/widget-registry';
 import { useEditMode } from './store';
+import { useIsNarrow } from '../lib/use-breakpoint';
 import type { Breakpoint, LayoutsByBreakpoint, WidgetType } from '../lib/database-types';
 
 const COLS = { lg: 12, md: 10, sm: 6, xs: 2 } as const;
@@ -49,6 +50,7 @@ export function Dashboard() {
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [gridRef, gridWidth] = useContainerWidth<HTMLDivElement>();
+  const isNarrow = useIsNarrow();
 
   const defaultSizes = useMemo(() => {
     return Object.fromEntries(
@@ -103,18 +105,8 @@ export function Dashboard() {
         breakpoints={BREAKPOINTS}
         cols={COLS}
         rowHeight={72}
-        margin={{
-          lg: [20, 20],
-          md: [20, 20],
-          sm: [16, 16],
-          xs: [12, 12],
-        }}
-        containerPadding={{
-          lg: [24, 24],
-          md: [24, 24],
-          sm: [16, 16],
-          xs: [12, 12],
-        }}
+        margin={isNarrow ? [14, 14] : [20, 20]}
+        containerPadding={isNarrow ? [12, 12] : [24, 24]}
         isDraggable={editMode}
         isResizable={editMode}
         onLayoutChange={handleLayoutChange}

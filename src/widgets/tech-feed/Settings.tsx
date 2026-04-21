@@ -83,9 +83,10 @@ function CategoryEditor({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'auto 1fr auto',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
           gap: 6,
           marginBottom: 8,
+          alignItems: 'center',
         }}
       >
         <select
@@ -103,7 +104,14 @@ function CategoryEditor({
           onChange={(e) => setValue(e.target.value)}
           placeholder={type === 'hn' ? 'n/a' : type === 'reddit' ? 'programming' : 'https://...'}
           disabled={type === 'hn'}
-          style={{ boxShadow: 'var(--inset)', padding: 6, borderRadius: 6 }}
+          style={{
+            boxShadow: 'var(--inset)',
+            padding: 6,
+            borderRadius: 6,
+            minWidth: 0,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
         />
         <button onClick={add} style={{ color: 'var(--accent)' }}>
           Add

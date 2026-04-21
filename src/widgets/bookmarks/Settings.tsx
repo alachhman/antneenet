@@ -20,20 +20,57 @@ export function Settings({
   return (
     <div>
       {config.items.map((it, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 6, marginBottom: 6 }}>
+        <div
+          key={i}
+          style={{
+            // minmax(0, ...) + min-width:0 on inputs lets the URL column
+            // shrink below its content width on narrow viewports so the
+            // trailing × never overflows off-screen.
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2fr) auto',
+            gap: 6,
+            marginBottom: 6,
+            alignItems: 'center',
+          }}
+        >
           <input
             aria-label="name"
             value={it.name}
             onChange={(e) => update(i, { name: e.target.value })}
-            style={{ boxShadow: 'var(--inset)', padding: 6, borderRadius: 6 }}
+            style={{
+              boxShadow: 'var(--inset)',
+              padding: 6,
+              borderRadius: 6,
+              minWidth: 0,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
           />
           <input
             aria-label="url"
             value={it.url}
             onChange={(e) => update(i, { url: e.target.value })}
-            style={{ boxShadow: 'var(--inset)', padding: 6, borderRadius: 6 }}
+            style={{
+              boxShadow: 'var(--inset)',
+              padding: 6,
+              borderRadius: 6,
+              minWidth: 0,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
           />
-          <button onClick={() => remove(i)} style={{ color: 'var(--down)' }}>×</button>
+          <button
+            onClick={() => remove(i)}
+            aria-label={`remove ${it.name || 'bookmark'}`}
+            style={{
+              color: 'var(--down)',
+              padding: '4px 8px',
+              fontSize: 16,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
         </div>
       ))}
       <button

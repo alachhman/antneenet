@@ -268,6 +268,10 @@ const cardLinkStyle: React.CSSProperties = {
   padding: '14px 16px',
   color: 'var(--text)',
   transition: 'box-shadow 0.15s ease',
+  // Guard against grid items not constraining us — lets ellipsis do its
+  // job on nowrap lines like the branch refs.
+  minWidth: 0,
+  overflow: 'hidden',
 };
 
 function CommitCard({ commit }: { commit: Commit }) {
@@ -706,7 +710,13 @@ function CardGrid({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(320px, 1fr))' : '1fr',
+        // minmax(0, ...) is crucial — without it, grid tracks inherit
+        // min-width: auto and let cards with long nowrap content push
+        // past the track width, causing horizontal overflow inside the
+        // widget (and kills text-overflow: ellipsis on inner lines).
+        gridTemplateColumns: isDesktop
+          ? 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))'
+          : 'minmax(0, 1fr)',
         gap: 12,
         alignItems: 'start',
       }}
