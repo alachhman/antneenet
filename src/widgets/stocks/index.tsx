@@ -6,7 +6,20 @@ export const stocksDefinition: WidgetDefinition<StocksConfig> = {
   type: 'stocks',
   displayName: 'Stocks',
   defaultConfig: {
-    tickers: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'NFLX', 'COIN'],
+    tickers: [
+      // Mega-cap tech
+      'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
+      // Semis
+      'AMD', 'AVGO', 'SMCI', 'INTC', 'QCOM',
+      // Consumer tech / platforms
+      'NFLX', 'SPOT', 'SHOP', 'ABNB', 'UBER',
+      // Fintech / crypto
+      'COIN', 'HOOD', 'V',
+      // Enterprise SaaS / data
+      'PLTR', 'CRM', 'ORCL',
+      // Retail / media
+      'COST', 'DIS',
+    ],
   },
   defaultSize: { w: 2, h: 3 },
   View,

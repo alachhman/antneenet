@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Label } from '../../ui';
+import { Label, ScrollableArea } from '../../ui';
 
 export type StocksConfig = { tickers: string[] };
 
@@ -47,7 +47,15 @@ export function View({ config }: { instanceId: string; config: StocksConfig }) {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        gap: 10,
+      }}
+    >
       <Label>Stocks</Label>
 
       {config.tickers.length === 0 && (
@@ -63,18 +71,25 @@ export function View({ config }: { instanceId: string; config: StocksConfig }) {
       )}
 
       {/* Responsive grid: cards flow into columns on wider tiles, stack on narrow.
-          minmax(0, 1fr) keeps them from overflowing the widget. */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
-          gap: 8,
-        }}
-      >
-        {data.map((q) => (
-          <StockCard key={q.symbol} quote={q} />
-        ))}
-      </div>
+          minmax(0, 1fr) keeps them from overflowing the widget. Scroll fades in
+          a gradient + ↓ badge when the list extends past the widget height. */}
+      {data.length > 0 && (
+        <ScrollableArea>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
+              gap: 8,
+              // Bottom padding so the last row isn't hidden behind the fade.
+              paddingBottom: 8,
+            }}
+          >
+            {data.map((q) => (
+              <StockCard key={q.symbol} quote={q} />
+            ))}
+          </div>
+        </ScrollableArea>
+      )}
     </div>
   );
 }
