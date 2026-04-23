@@ -5,7 +5,9 @@ import { Settings } from './Settings';
 export const stocksDefinition: WidgetDefinition<StocksConfig> = {
   type: 'stocks',
   displayName: 'Stocks',
-  defaultConfig: { tickers: ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'XAU'] },
+  defaultConfig: {
+    tickers: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'NFLX', 'COIN'],
+  },
   defaultSize: { w: 2, h: 3 },
   View,
   Settings,
