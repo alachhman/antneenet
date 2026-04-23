@@ -26,7 +26,7 @@ export function TopBar() {
         gap: isNarrow ? 'var(--space-2)' : 'var(--space-4)',
       }}
     >
-      <div style={{ fontSize: isNarrow ? 16 : 18, fontWeight: 600 }}>Dashboard</div>
+      <div style={{ fontSize: isNarrow ? 16 : 18, fontWeight: 600 }}>Antnee Net</div>
 
       {/* Search bar is decorative for now — hide on mobile where horizontal
           space matters more than the affordance. */}

@@ -30,7 +30,7 @@ export function Login() {
     }}>
       <Raised style={{ width: 360, padding: 'var(--space-5)' }}>
         <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 'var(--space-4)' }}>
-          Dashboard
+          Antnee Net
         </div>
         <form onSubmit={onSubmit}>
           <label htmlFor="pwd" style={{ display: 'block', marginBottom: 'var(--space-2)', color: 'var(--text-dim)', fontSize: 12 }}>
