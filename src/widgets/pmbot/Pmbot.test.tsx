@@ -53,7 +53,8 @@ describe('pmbot view', () => {
   it('renders balance and today P&L', () => {
     snapshotMock.value = { data: fullSnapshot(), updated_at: new Date().toISOString() };
     render(wrap(<View instanceId="x" config={{}} />));
-    expect(screen.getByText(/\$20\.01/)).toBeInTheDocument();
+    // $20.01 appears as both the hero balance and the buying-power stat.
+    expect(screen.getAllByText(/\$20\.01/).length).toBeGreaterThan(0);
     // negative realized today shows as a loss
     expect(screen.getByText(/-\$3\.50/)).toBeInTheDocument();
   });
@@ -61,9 +62,10 @@ describe('pmbot view', () => {
   it('shows each strategy with its live state', () => {
     snapshotMock.value = { data: fullSnapshot(), updated_at: new Date().toISOString() };
     render(wrap(<View instanceId="x" config={{}} />));
-    // Names appear in both the Strategies and Health sections, so use getAllByText.
-    expect(screen.getAllByText('basket_arb').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('news_signal').length).toBeGreaterThan(0);
+    // Names render inside richer chips ("basket_arb LIVE") and appear in both
+    // the Strategies and Health sections, so use substring getAllByText.
+    expect(screen.getAllByText(/basket_arb/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/news_signal/).length).toBeGreaterThan(0);
     // Strategy live badges render.
     expect(screen.getAllByText(/LIVE/).length).toBeGreaterThan(0);
   });
