@@ -8,7 +8,7 @@ import { registry, getDefinition, listWidgetTypes } from './widget-registry';
 describe('widget registry', () => {
   it('contains all registered widgets', () => {
     expect(listWidgetTypes().sort()).toEqual(
-      ['bookmarks', 'github', 'habits', 'stocks', 'tech-feed', 'weather'],
+      ['bookmarks', 'github', 'habits', 'pmbot', 'stocks', 'tech-feed', 'weather'],
     );
   });
 
