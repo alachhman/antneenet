@@ -51,7 +51,9 @@ export function ScrollableArea({
     >
       <div
         ref={scrollRef}
-        style={{ height: '100%', overflowY: 'auto' }}
+        // Right gutter so content (and macOS overlay scrollbars) don't sit
+        // flush against the scrollbar. Applies to every widget.
+        style={{ height: '100%', overflowY: 'auto', paddingRight: 8 }}
       >
         <div ref={contentRef}>{children}</div>
       </div>
